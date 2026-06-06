@@ -1,224 +1,259 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reading Tracker</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link
-    href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap"
-    rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Noeks Reading Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Nunito:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-  <header>
-    <h1>📖 <span>Reading</span> Tracker</h1>
+<header>
+  <div class="header-inner">
+    <h1>Noeks <span>Reading Log</span></h1>
     <nav>
-      <button class="active" onclick="showView('books')">My Books</button>
-      <button onclick="showView('challenges')">Challenges</button>
-      <button onclick="showView('manage')">Manage</button>
+      <button class="active" onclick="showView('home', this)">Home</button>
+      <button onclick="showView('books', this)">My Books</button>
+      <button onclick="showView('challenges', this)">Challenges</button>
+      <button onclick="showView('manage', this)">Manage</button>
     </nav>
-  </header>
+  </div>
+</header>
 
-  <main>
-    <!-- Setup banner -->
-    <div id="setup-banner">
-      <p>
-        <strong>⚙️ Connect to Supabase</strong>
-        Enter your Supabase URL and anon key to save data across all your devices.
-      </p>
-      <div class="fields">
-        <input type="text" id="sb-url" placeholder="https://xxxx.supabase.co" />
-        <input type="text" id="sb-key" placeholder="your-anon-key" />
-        <button class="btn btn-accent btn-sm" onclick="connectSupabase()">Connect</button>
-        <button class="btn btn-ghost btn-sm" onclick="dismissSetup()">Use offline</button>
-      </div>
-    </div>
-
-    <!-- BOOKS VIEW -->
-    <div id="view-books" class="view active">
-      <div class="page-header">
-        <h2>My Books</h2>
-        <button class="btn btn-primary" onclick="openBookModal()">+ Add book</button>
-      </div>
-
-      <div class="stats-row" id="stats-row"></div>
-
-      <div class="filters" id="status-filters">
-        <button class="filter-btn active" onclick="setFilter('status','all',this)">All</button>
-        <button class="filter-btn" onclick="setFilter('status','to-read',this)">To read</button>
-        <button class="filter-btn" onclick="setFilter('status','reading',this)">Reading</button>
-        <button class="filter-btn" onclick="setFilter('status','done',this)">Done</button>
-        <div class="filter-sep"></div>
-        <span id="group-filters" style="display:flex;gap:.5rem;flex-wrap:wrap;"></span>
-      </div>
-
-      <div class="search-bar">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
-          style="color:var(--ink-faint);flex-shrink:0">
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <input type="text" id="book-search-input" placeholder="Search by title or author…" oninput="renderBooks()">
-      </div>
-
-      <div class="cards-grid" id="books-grid"></div>
-    </div>
-
-    <!-- CHALLENGES VIEW -->
-    <div id="view-challenges" class="view">
-      <div class="page-header">
-        <h2>Challenges</h2>
-      </div>
-      <div id="challenges-content"></div>
-    </div>
-
-    <!-- MANAGE VIEW -->
-    <div id="view-manage" class="view">
-      <div class="page-header">
-        <h2>Manage</h2>
-      </div>
-      <div class="manage-grid">
-        <div class="manage-section">
-          <h3>Reading Groups</h3>
-          <div id="groups-list"></div>
-          <button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="openGroupModal()">+ Add group</button>
-        </div>
-        <div class="manage-section">
-          <h3>Challenges</h3>
-          <div id="challenges-list"></div>
-          <button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="openChallengeModal()">+ Add
-            challenge</button>
-        </div>
-      </div>
-    </div>
-  </main>
-
-  <!-- Book modal -->
-  <div id="book-modal" class="modal-backdrop" style="display:none" onclick="closeModal('book-modal',event)">
-    <div class="modal">
-      <div class="modal-header">
-        <h2 id="book-modal-title">Add book</h2>
-        <button class="modal-close" onclick="closeModal('book-modal')">×</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label>Search Open Library</label>
-          <div style="display:flex;gap:.5rem">
-            <input type="text" id="ol-search" placeholder="Title or author…"
-              onkeydown="if(event.key==='Enter')searchOpenLibrary()">
-            <button class="btn btn-ghost btn-sm" onclick="searchOpenLibrary()" id="ol-btn">Search</button>
-          </div>
-          <div id="ol-results"></div>
-        </div>
-
-        <div style="text-align:center;color:var(--ink-faint);font-size:.82rem;margin:-.25rem 0 1rem">— or fill in
-          manually —</div>
-
-        <input type="hidden" id="book-id">
-        <input type="hidden" id="book-cover-url">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Title *</label>
-            <input type="text" id="book-title" placeholder="The book title">
-          </div>
-          <div class="form-group">
-            <label>Author *</label>
-            <input type="text" id="book-author" placeholder="Author name">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Year</label>
-            <input type="text" id="book-year" placeholder="2024">
-          </div>
-          <div class="form-group">
-            <label>Status</label>
-            <select id="book-status">
-              <option value="to-read">To read</option>
-              <option value="reading">Reading</option>
-              <option value="done">Done</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>Assign to challenges</label>
-          <div id="challenge-assignments" style="max-height:220px;overflow-y:auto;"></div>
-        </div>
-
-        <div class="form-footer">
-          <button class="btn btn-ghost" onclick="closeModal('book-modal')">Cancel</button>
-          <button class="btn btn-primary" onclick="saveBook()">Save book</button>
-        </div>
-      </div>
+<main>
+  <!-- Setup banner -->
+  <div id="setup-banner">
+    <p>
+      <strong>⚙️ Connect to Supabase</strong>
+      Enter your credentials to sync across all devices.
+    </p>
+    <div class="fields">
+      <input type="text" id="sb-url" placeholder="https://xxxx.supabase.co" />
+      <input type="text" id="sb-key" placeholder="your publishable key" />
+      <button class="btn btn-berry btn-sm" onclick="connectSupabase()">Connect</button>
+      <button class="btn btn-ghost btn-sm" onclick="dismissSetup()">Use offline</button>
     </div>
   </div>
 
-  <!-- Group modal -->
-  <div id="group-modal" class="modal-backdrop" style="display:none" onclick="closeModal('group-modal',event)">
-    <div class="modal" style="max-width:400px">
-      <div class="modal-header">
-        <h2 id="group-modal-title">Add group</h2>
-        <button class="modal-close" onclick="closeModal('group-modal')">×</button>
+  <!-- HOME VIEW -->
+  <div id="view-home" class="view active">
+    <div class="home-hero">
+      <div class="home-hero-text">
+        <h2>Welcome back! 📖</h2>
+        <p>Track your reading challenges across all your groups.</p>
       </div>
-      <div class="modal-body">
-        <input type="hidden" id="group-id">
-        <div class="form-group">
-          <label>Group name *</label>
-          <input type="text" id="group-name" placeholder="e.g. Dutch Readers Club">
-        </div>
-        <div class="form-group">
-          <label>Description</label>
-          <input type="text" id="group-desc" placeholder="Optional short description">
-        </div>
-        <div class="form-footer">
-          <button class="btn btn-ghost" onclick="closeModal('group-modal')">Cancel</button>
-          <button class="btn btn-primary" onclick="saveGroup()">Save group</button>
-        </div>
+      <button class="btn btn-berry" onclick="openBookModal()">+ Add book</button>
+    </div>
+
+    <div class="stats-row" id="home-stats"></div>
+
+    <div class="home-grid">
+      <div class="home-section">
+        <h3 class="section-title">Currently reading</h3>
+        <div id="home-reading-list"></div>
       </div>
+      <div class="home-section">
+        <h3 class="section-title">Reading groups</h3>
+        <div id="home-groups-list"></div>
+      </div>
+    </div>
+
+    <div class="home-section" style="margin-top: 2rem;">
+      <h3 class="section-title">Challenge progress</h3>
+      <div id="home-challenge-progress"></div>
     </div>
   </div>
 
-  <!-- Challenge modal -->
-  <div id="challenge-modal" class="modal-backdrop" style="display:none" onclick="closeModal('challenge-modal',event)">
-    <div class="modal" style="max-width:440px">
-      <div class="modal-header">
-        <h2 id="challenge-modal-title">Add challenge</h2>
-        <button class="modal-close" onclick="closeModal('challenge-modal')">×</button>
+  <!-- BOOKS VIEW -->
+  <div id="view-books" class="view">
+    <div class="page-header">
+      <h2>My Books</h2>
+      <button class="btn btn-berry" onclick="openBookModal()">+ Add book</button>
+    </div>
+
+    <div class="filters" id="status-filters">
+      <button class="filter-btn active" onclick="setFilter('status','all',this)">All</button>
+      <button class="filter-btn" onclick="setFilter('status','to-read',this)">To read</button>
+      <button class="filter-btn" onclick="setFilter('status','reading',this)">Reading</button>
+      <button class="filter-btn" onclick="setFilter('status','done',this)">Done</button>
+      <div class="filter-sep"></div>
+      <span id="group-filters" style="display:flex;gap:.5rem;flex-wrap:wrap;"></span>
+    </div>
+
+    <div class="search-bar">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;opacity:.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="book-search-input" placeholder="Search by title or author…" oninput="renderBooks()">
+    </div>
+
+    <div class="cards-grid" id="books-grid"></div>
+  </div>
+
+  <!-- CHALLENGES VIEW -->
+  <div id="view-challenges" class="view">
+    <div class="page-header">
+      <h2>Challenges</h2>
+    </div>
+    <div id="challenges-content"></div>
+  </div>
+
+  <!-- MANAGE VIEW -->
+  <div id="view-manage" class="view">
+    <div class="page-header">
+      <h2>Manage</h2>
+    </div>
+    <div class="manage-grid">
+      <div class="manage-section">
+        <h3>Reading Groups</h3>
+        <div id="groups-list"></div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="openGroupModal()">+ Add group</button>
       </div>
-      <div class="modal-body">
-        <input type="hidden" id="challenge-id">
+      <div class="manage-section">
+        <h3>Challenges</h3>
+        <div id="challenges-list"></div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="openChallengeModal()">+ Add challenge</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Book modal -->
+<div id="book-modal" class="modal-backdrop" style="display:none" onclick="closeModal('book-modal',event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="book-modal-title">Add book</h2>
+      <button class="modal-close" onclick="closeModal('book-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Search Open Library</label>
+        <div style="display:flex;gap:.5rem">
+          <input type="text" id="ol-search" placeholder="Title or author…" onkeydown="if(event.key==='Enter')searchOpenLibrary()">
+          <button class="btn btn-ghost btn-sm" onclick="searchOpenLibrary()" id="ol-btn">Search</button>
+        </div>
+        <div id="ol-results"></div>
+      </div>
+      <div class="divider-label">— or fill in manually —</div>
+      <input type="hidden" id="book-id">
+      <input type="hidden" id="book-cover-url">
+      <div class="form-row">
         <div class="form-group">
-          <label>Group *</label>
-          <select id="challenge-group"></select>
+          <label>Title *</label>
+          <input type="text" id="book-title" placeholder="The book title">
         </div>
         <div class="form-group">
-          <label>Challenge name *</label>
-          <input type="text" id="challenge-name" placeholder="e.g. A book set in Asia">
+          <label>Author *</label>
+          <input type="text" id="book-author" placeholder="Author name">
         </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Year</label>
+          <input type="text" id="book-year" placeholder="2024">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="book-status">
+            <option value="to-read">To read</option>
+            <option value="reading">Reading</option>
+            <option value="done">Done</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Assign to challenges</label>
+        <div id="challenge-assignments" style="max-height:220px;overflow-y:auto;"></div>
+      </div>
+      <div class="form-footer">
+        <button class="btn btn-ghost" onclick="closeModal('book-modal')">Cancel</button>
+        <button class="btn btn-berry" onclick="saveBook()">Save book</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Group modal -->
+<div id="group-modal" class="modal-backdrop" style="display:none" onclick="closeModal('group-modal',event)">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h2 id="group-modal-title">Add group</h2>
+      <button class="modal-close" onclick="closeModal('group-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="group-id">
+      <div class="form-group">
+        <label>Group name *</label>
+        <input type="text" id="group-name" placeholder="e.g. Dutch Readers Club">
+      </div>
+      <div class="form-group">
+        <label>Goodreads URL</label>
+        <input type="text" id="group-url" placeholder="https://www.goodreads.com/group/show/...">
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" id="group-desc" placeholder="Optional short description">
+      </div>
+      <div class="form-footer">
+        <button class="btn btn-ghost" onclick="closeModal('group-modal')">Cancel</button>
+        <button class="btn btn-berry" onclick="saveGroup()">Save group</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Challenge modal -->
+<div id="challenge-modal" class="modal-backdrop" style="display:none" onclick="closeModal('challenge-modal',event)">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <h2 id="challenge-modal-title">Add challenge</h2>
+      <button class="modal-close" onclick="closeModal('challenge-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="challenge-id">
+      <div class="form-group">
+        <label>Group *</label>
+        <select id="challenge-group"></select>
+      </div>
+      <div class="form-group">
+        <label>Challenge name *</label>
+        <input type="text" id="challenge-name" placeholder="e.g. A book set in Asia">
+      </div>
+      <div class="form-row">
         <div class="form-group">
           <label>Period</label>
-          <input type="text" id="challenge-period" placeholder="e.g. January, Summer, Year-round">
+          <input type="text" id="challenge-period" placeholder="e.g. January, Year-round">
         </div>
         <div class="form-group">
-          <label>Description</label>
-          <textarea id="challenge-desc" placeholder="Details about this challenge…" style="min-height:70px"></textarea>
+          <label>Deadline</label>
+          <input type="date" id="challenge-deadline">
         </div>
-        <div class="form-footer">
-          <button class="btn btn-ghost" onclick="closeModal('challenge-modal')">Cancel</button>
-          <button class="btn btn-primary" onclick="saveChallenge()">Save challenge</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Points</label>
+          <input type="number" id="challenge-points" placeholder="e.g. 15" min="0">
         </div>
+        <div class="form-group">
+          <label>Bonus points</label>
+          <input type="number" id="challenge-bonus" placeholder="e.g. 5" min="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Description / conditions</label>
+        <textarea id="challenge-desc" placeholder="Details about this challenge…" style="min-height:70px"></textarea>
+      </div>
+      <div class="form-footer">
+        <button class="btn btn-ghost" onclick="closeModal('challenge-modal')">Cancel</button>
+        <button class="btn btn-berry" onclick="saveChallenge()">Save challenge</button>
       </div>
     </div>
   </div>
+</div>
 
-  <div id="toast"></div>
-  <script src="main.js"></script>
+<div id="toast"></div>
+
+<script src="app.js"></script>
 </body>
-
 </html>
