@@ -5,15 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Noeks Reading Log</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Nunito:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playwrite+GB+J:ital,wght@0,100..400;1,100..400&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="style.css">
+<link rel="icon" type="image/x-icon" href="./assets/favicon.svg">
 </head>
 <body>
 
 <header>
   <div class="header-inner">
-    <h1>Noeks <span>Reading Log</span></h1>
+    <a href="/">
+      <h1>Noeks <span>Reading Log</span></h1>
+    </a>
     <nav>
       <button class="active" onclick="showView('home', this)">Home</button>
       <button onclick="showView('books', this)">My Books</button>

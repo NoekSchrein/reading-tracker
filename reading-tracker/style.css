@@ -30,7 +30,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: 'Nunito', sans-serif;
+  font-family: "Roboto", sans-serif;
   background: var(--bg);
   color: var(--ink);
   min-height: 100vh;
@@ -54,8 +54,10 @@ header {
   align-items: center;
   gap: 2rem;
 }
+
+header a { text-decoration: none; }
 header h1 {
-  font-family: 'Playfair Display', serif;
+  font-family: "Playwrite GB J", cursive;
   font-size: 1.3rem;
   font-weight: 700;
   color: var(--apricot);
@@ -74,7 +76,7 @@ nav button {
   padding: 0.4rem 0.9rem;
   border-radius: 6px;
   cursor: pointer;
-  font-family: 'Nunito', sans-serif;
+  font-family: "Roboto", sans-serif;
   font-size: 0.875rem;
   font-weight: 600;
   transition: all 0.15s;
@@ -108,7 +110,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
   padding: 0.45rem 0.75rem;
   border: 1px solid var(--border2);
   border-radius: 6px;
-  font-family: 'Nunito', sans-serif;
+  font-family: "Roboto", sans-serif;
   font-size: 0.8rem;
   width: 240px;
   background: white;
@@ -116,7 +118,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
 
 /* ── Home view ── */
 .home-hero {
-  background: linear-gradient(135deg, var(--bordeaux) 0%, var(--berry) 100%);
+  background: var(--berry);
   border-radius: var(--radius-xl);
   padding: 2rem 2.5rem;
   display: flex;
@@ -127,7 +129,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
   flex-wrap: wrap;
 }
 .home-hero-text h2 {
-  font-family: 'Playfair Display', serif;
+  font-family: "Playwrite GB J", cursive;
   font-size: 1.75rem;
   color: var(--apricot);
   margin-bottom: 0.25rem;
@@ -144,7 +146,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
 
 .home-section { margin-bottom: 1rem; }
 .section-title {
-  font-family: 'Playfair Display', serif;
+  font-family: "Playwrite GB J", cursive;
   font-size: 1.05rem;
   font-weight: 500;
   color: var(--bordeaux);
@@ -256,7 +258,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
   box-shadow: var(--shadow);
 }
 .stat-card .num {
-  font-family: 'Playfair Display', serif;
+  font-family: "Playwrite GB J", cursive;
   font-size: 2rem;
   font-weight: 700;
   color: var(--berry);
@@ -274,7 +276,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
   flex-wrap: wrap;
 }
 .page-header h2 {
-  font-family: 'Playfair Display', serif;
+  font-family: "Playwrite GB J", cursive;
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--bordeaux);
@@ -289,7 +291,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
   border-radius: var(--radius);
   border: none;
   cursor: pointer;
-  font-family: 'Nunito', sans-serif;
+  font-family: "Roboto", sans-serif;
   font-size: 0.875rem;
   font-weight: 600;
   transition: all 0.15s;
@@ -358,7 +360,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
 
 .book-card-body { padding: 1rem 1.15rem; flex: 1; display: flex; flex-direction: column; }
 .book-card-body h3 {
-  font-family: 'Playfair Display', serif;
+  font-family: "Playwrite GB J", cursive;
   font-size: 0.975rem;
   font-weight: 500;
   line-height: 1.3;
@@ -412,7 +414,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
   font-size: 0.82rem;
   cursor: pointer;
   color: var(--ink-light);
-  font-family: 'Nunito', sans-serif;
+  font-family: "Roboto", sans-serif;
   font-weight: 600;
   transition: all 0.15s;
 }
@@ -437,7 +439,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
   border: none;
   outline: none;
   width: 100%;
-  font-family: 'Nunito', sans-serif;
+  font-family: "Roboto", sans-serif;
   font-size: 0.9rem;
   color: var(--ink);
   background: transparent;
@@ -456,7 +458,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
   flex-wrap: wrap;
 }
 .group-header h3 {
-  font-family: 'Playfair Display', serif;
+  font-family: "Playwrite GB J", cursive;
   font-size: 1.15rem;
   color: var(--bordeaux);
 }
@@ -533,7 +535,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
 }
 @media (max-width: 680px) { .manage-grid { grid-template-columns: 1fr; } }
 .manage-section h3 {
-  font-family: 'Playfair Display', serif;
+  font-family: "Playwrite GB J", cursive;
   font-size: 1.05rem;
   color: var(--bordeaux);
   margin-bottom: 0.85rem;
@@ -577,7 +579,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
   z-index: 1;
 }
 .modal-header h2 {
-  font-family: 'Playfair Display', serif;
+  font-family: "Playwrite GB J", cursive;
   font-size: 1.1rem;
   color: var(--bordeaux);
   flex: 1;
@@ -605,7 +607,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
   padding: 0.55rem 0.85rem;
   border: 1px solid var(--border2);
   border-radius: var(--radius);
-  font-family: 'Nunito', sans-serif;
+  font-family: "Roboto", sans-serif;
   font-size: 0.9rem;
   color: var(--ink);
   background: white;
@@ -674,7 +676,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
   padding: 0.38rem 0.65rem;
   border: 1px solid var(--border2);
   border-radius: 6px;
-  font-family: 'Nunito', sans-serif;
+  font-family: "Roboto", sans-serif;
   font-size: 0.82rem;
   background: white;
 }

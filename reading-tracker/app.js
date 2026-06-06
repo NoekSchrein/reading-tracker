@@ -12,12 +12,12 @@ const GOODREADS_GROUPS = [
   {
     name: 'Fanatieke Nederlandse Lezers',
     url: 'https://www.goodreads.com/group/show/79675-fanatieke-nederlandse-lezers',
-    icon: '🇳🇱'
+    icon: './assets/79675.jpg'
   },
   {
     name: 'Everyone Has Read This But Me',
     url: 'https://www.goodreads.com/group/show/189072-everyone-has-read-this-but-me---the-catch-up-book-club',
-    icon: '📚'
+    icon: './assets/189072.jpg'
   }
 ];
 
@@ -110,9 +110,9 @@ function renderHome() {
   const done = books.filter(b => b.status === 'done').length;
   document.getElementById('home-stats').innerHTML = `
     <div class="stat-card"><div class="num">${books.length}</div><div class="lbl">Total books</div></div>
-    <div class="stat-card"><div class="num" style="color:var(--blue)">${reading}</div><div class="lbl">Reading</div></div>
+    <div class="stat-card"><div class="num" style="color:var(--berry)">${reading}</div><div class="lbl">Reading</div></div>
     <div class="stat-card"><div class="num" style="color:var(--bordeaux)">${toRead}</div><div class="lbl">To read</div></div>
-    <div class="stat-card"><div class="num" style="color:var(--green)">${done}</div><div class="lbl">Done</div></div>
+    <div class="stat-card"><div class="num" style="color:var(--berry)">${done}</div><div class="lbl">Done</div></div>
     <div class="stat-card"><div class="num">${challenges.length}</div><div class="lbl">Challenges</div></div>
   `;
 
@@ -141,7 +141,7 @@ function renderHome() {
   const gl = document.getElementById('home-groups-list');
   const groupCards = GOODREADS_GROUPS.map(g => `
     <a href="${g.url}" target="_blank" rel="noopener" class="group-link-card">
-      <div class="group-link-icon">${g.icon}</div>
+      <img class="group-link-icon" src="${g.icon}" alt="Group icon" width="40" height="40">
       <div class="group-link-info">
         <strong>${esc(g.name)}</strong>
         <small>Open on Goodreads ↗</small>
@@ -151,7 +151,7 @@ function renderHome() {
   // Also show local groups if any
   const localGroupLinks = groups.filter(g => g.goodreads_url).map(g => `
     <a href="${esc(g.goodreads_url)}" target="_blank" rel="noopener" class="group-link-card">
-      <div class="group-link-icon">📖</div>
+      <img class="group-link-icon" src="${g.icon}" alt="Group icon" width="40" height="40">
       <div class="group-link-info">
         <strong>${esc(g.name)}</strong>
         <small>Open on Goodreads ↗</small>
@@ -523,7 +523,7 @@ function selectBook(data) {
   document.getElementById('book-author').value = data.author;
   document.getElementById('book-year').value = data.year || '';
   document.getElementById('book-cover-url').value = data.cover || '';
-  document.getElementById('ol-results').innerHTML = `<p style="font-size:.8rem;color:var(--green);padding:.4rem 0">✓ Book selected — you can still edit the fields below</p>`;
+  document.getElementById('ol-results').innerHTML = `<p style="font-size:.8rem;color:var(--berrry);padding:.4rem 0">✓ Book selected — you can still edit the fields below</p>`;
 }
 
 // ── Group modal ──

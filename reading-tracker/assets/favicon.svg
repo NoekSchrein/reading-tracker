@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="32" fill="#450920"/>
+  
+  <!-- Book body -->
+  <rect x="14" y="16" width="22" height="30" rx="2" fill="#f9dbbd"/>
+  <!-- Book spine -->
+  <rect x="14" y="16" width="4" height="30" rx="1" fill="#da627d"/>
+  <!-- Book pages lines -->
+  <line x1="22" y1="22" x2="32" y2="22" stroke="#a53860" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="22" y1="26" x2="32" y2="26" stroke="#a53860" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="22" y1="30" x2="32" y2="30" stroke="#a53860" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="22" y1="34" x2="29" y2="34" stroke="#a53860" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Second book (slightly behind, rotated) -->
+  <rect x="28" y="19" width="22" height="30" rx="2" fill="#ffa5ab" transform="rotate(8 39 34)"/>
+  <rect x="28" y="19" width="4" height="30" rx="1" fill="#a53860" transform="rotate(8 39 34)"/>
+
+  <!-- Small star accent -->
+  <circle cx="46" cy="18" r="3" fill="#f9dbbd" opacity="0.9"/>
+</svg>
