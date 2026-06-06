@@ -1,0 +1,1435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reading Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --cream: #faf7f2;
+    --ink: #1a1714;
+    --ink-light: #6b6560;
+    --ink-faint: #b8b3ac;
+    --border: #e8e3db;
+    --accent: #8b4513;
+    --accent-light: #f5ede6;
+    --accent-mid: #c4734a;
+    --green: #3a6b4a;
+    --green-light: #eaf2ec;
+    --blue: #2c5282;
+    --blue-light: #ebf0f9;
+    --amber: #92660a;
+    --amber-light: #fef9ec;
+    --red: #9b2c2c;
+    --red-light: #fff5f5;
+    --radius: 10px;
+    --radius-lg: 16px;
+    --shadow: 0 1px 3px rgba(26,23,20,0.08), 0 4px 16px rgba(26,23,20,0.06);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--ink);
+    color: white;
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  header h1 {
+    font-family: 'Lora', serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    flex: 1;
+  }
+  header h1 span { color: var(--accent-mid); }
+
+  nav { display: flex; gap: 0.25rem; }
+  nav button {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.55);
+    padding: 0.4rem 0.85rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  nav button:hover { background: rgba(255,255,255,0.1); color: white; }
+  nav button.active { background: rgba(255,255,255,0.15); color: white; }
+
+  /* ── Layout ── */
+  main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ── Setup Banner ── */
+  #setup-banner {
+    background: var(--amber-light);
+    border: 1px solid #f0d080;
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  #setup-banner p { font-size: 0.9rem; color: var(--amber); flex: 1; min-width: 200px; }
+  #setup-banner p strong { display: block; font-weight: 500; margin-bottom: 0.2rem; color: var(--ink); }
+  #setup-banner .fields { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+  #setup-banner input {
+    padding: 0.45rem 0.75rem;
+    border: 1px solid #d0b860;
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    width: 260px;
+    background: white;
+  }
+
+  /* ── Page header row ── */
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.75rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .page-header h2 {
+    font-family: 'Lora', serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1.1rem;
+    border-radius: var(--radius);
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--ink); color: white; }
+  .btn-primary:hover { background: #3a3530; }
+  .btn-accent { background: var(--accent); color: white; }
+  .btn-accent:hover { background: #7a3c10; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--ink); }
+  .btn-ghost:hover { background: var(--border); }
+  .btn-danger { background: var(--red-light); color: var(--red); border: 1px solid #fecdcd; }
+  .btn-danger:hover { background: #fed7d7; }
+  .btn-sm { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
+
+  /* ── Cards grid ── */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.25rem;
+  }
+
+  .card {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    transition: box-shadow 0.2s;
+  }
+  .card:hover { box-shadow: 0 4px 20px rgba(26,23,20,0.12); }
+
+  /* ── Book card ── */
+  .book-card { display: flex; flex-direction: column; }
+  .book-card-cover {
+    height: 160px;
+    background: var(--accent-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+  .book-card-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .book-card-cover .no-cover {
+    font-family: 'Lora', serif;
+    font-size: 2.5rem;
+    color: var(--accent-mid);
+    opacity: 0.4;
+  }
+  .book-card-cover .status-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 0.25rem 0.6rem;
+    border-radius: 20px;
+  }
+  .status-badge.reading { background: var(--blue-light); color: var(--blue); }
+  .status-badge.to-read { background: var(--amber-light); color: var(--amber); }
+  .status-badge.done { background: var(--green-light); color: var(--green); }
+
+  .book-card-body { padding: 1.1rem 1.25rem; flex: 1; display: flex; flex-direction: column; }
+  .book-card-body h3 {
+    font-family: 'Lora', serif;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.35;
+    margin-bottom: 0.2rem;
+  }
+  .book-card-body .author {
+    font-size: 0.82rem;
+    color: var(--ink-light);
+    margin-bottom: 0.75rem;
+  }
+
+  .challenge-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.75rem; }
+  .challenge-tag {
+    font-size: 0.72rem;
+    background: var(--accent-light);
+    color: var(--accent);
+    padding: 0.2rem 0.55rem;
+    border-radius: 20px;
+    font-weight: 500;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .book-note {
+    font-size: 0.8rem;
+    color: var(--ink-light);
+    font-style: italic;
+    line-height: 1.4;
+    margin-bottom: 0.75rem;
+    flex: 1;
+  }
+
+  .book-card-actions { display: flex; gap: 0.5rem; margin-top: auto; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+
+  /* ── Filters ── */
+  .filters {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .filter-btn {
+    padding: 0.4rem 0.9rem;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: white;
+    font-size: 0.82rem;
+    cursor: pointer;
+    color: var(--ink-light);
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+  }
+  .filter-btn.active { background: var(--ink); color: white; border-color: var(--ink); }
+  .filter-btn:hover:not(.active) { border-color: var(--ink-faint); color: var(--ink); }
+  .filter-sep { width: 1px; height: 24px; background: var(--border); margin: 0 0.25rem; }
+
+  /* ── Search bar ── */
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.5rem 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .search-bar input {
+    border: none;
+    outline: none;
+    width: 100%;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    color: var(--ink);
+    background: transparent;
+  }
+  .search-bar input::placeholder { color: var(--ink-faint); }
+
+  /* ── Group section (challenges view) ── */
+  .group-section { margin-bottom: 2.5rem; }
+  .group-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--ink);
+  }
+  .group-header h3 { font-family: 'Lora', serif; font-size: 1.2rem; font-weight: 600; }
+  .group-badge {
+    font-size: 0.75rem;
+    background: var(--ink);
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+  }
+  .group-header-actions { margin-left: auto; display: flex; gap: 0.5rem; }
+
+  .challenge-row {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+  }
+  .challenge-row-header {
+    display: flex;
+    align-items: center;
+    padding: 0.85rem 1.1rem;
+    gap: 0.75rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  .challenge-row-header:hover { background: var(--cream); }
+  .challenge-name { font-weight: 500; font-size: 0.9rem; flex: 1; }
+  .challenge-period {
+    font-size: 0.75rem;
+    color: var(--ink-light);
+    background: var(--cream);
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+  }
+  .challenge-count {
+    font-size: 0.8rem;
+    color: var(--ink-light);
+    white-space: nowrap;
+  }
+
+  .challenge-books {
+    display: none;
+    padding: 0 1.1rem 1rem;
+    border-top: 1px solid var(--border);
+  }
+  .challenge-books.open { display: block; }
+
+  .challenge-book-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .challenge-book-row:last-child { border-bottom: none; }
+  .challenge-book-cover {
+    width: 36px;
+    height: 48px;
+    border-radius: 4px;
+    object-fit: cover;
+    background: var(--accent-light);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .challenge-book-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .challenge-book-cover .no-img { font-size: 1.1rem; color: var(--accent-mid); opacity: 0.4; }
+  .challenge-book-info { flex: 1; min-width: 0; }
+  .challenge-book-info strong { font-size: 0.875rem; display: block; }
+  .challenge-book-info small { font-size: 0.78rem; color: var(--ink-light); }
+  .challenge-book-note {
+    font-size: 0.78rem;
+    color: var(--ink-light);
+    font-style: italic;
+    background: var(--cream);
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    max-width: 200px;
+  }
+
+  /* ── Manage view ── */
+  .manage-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+  }
+  @media (max-width: 680px) { .manage-grid { grid-template-columns: 1fr; } }
+
+  .manage-section h3 {
+    font-family: 'Lora', serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .manage-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 0.5rem;
+    background: white;
+  }
+  .manage-item span { flex: 1; font-size: 0.875rem; }
+  .manage-item small { font-size: 0.75rem; color: var(--ink-faint); }
+
+  /* ── Modal ── */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(26,23,20,0.5);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    backdrop-filter: blur(2px);
+  }
+  .modal {
+    background: white;
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 580px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    gap: 1rem;
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 1;
+  }
+  .modal-header h2 { font-family: 'Lora', serif; font-size: 1.15rem; font-weight: 600; flex: 1; }
+  .modal-close { background: none; border: none; cursor: pointer; color: var(--ink-light); font-size: 1.4rem; line-height: 1; padding: 0.2rem; }
+  .modal-body { padding: 1.5rem; }
+
+  /* ── Form ── */
+  .form-group { margin-bottom: 1.1rem; }
+  .form-group label { display: block; font-size: 0.82rem; font-weight: 500; margin-bottom: 0.4rem; color: var(--ink-light); }
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    width: 100%;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    color: var(--ink);
+    background: white;
+    transition: border-color 0.15s;
+  }
+  .form-group input:focus,
+  .form-group textarea:focus,
+  .form-group select:focus { outline: none; border-color: var(--accent-mid); }
+  .form-group textarea { resize: vertical; min-height: 80px; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 480px) { .form-row { grid-template-columns: 1fr; } }
+
+  .form-footer {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    margin-top: 1.5rem;
+  }
+
+  /* ── Book search results ── */
+  .search-results {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-top: 0.5rem;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+  .search-result-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .search-result-item:last-child { border-bottom: none; }
+  .search-result-item:hover { background: var(--accent-light); }
+  .search-result-item img {
+    width: 32px; height: 44px;
+    object-fit: cover;
+    border-radius: 3px;
+    background: var(--accent-light);
+    flex-shrink: 0;
+  }
+  .search-result-item .info strong { font-size: 0.875rem; display: block; }
+  .search-result-item .info small { font-size: 0.78rem; color: var(--ink-light); }
+
+  /* ── Challenge assignment ── */
+  .challenge-assignment {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    background: var(--cream);
+  }
+  .challenge-assignment label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+  .challenge-assignment input[type=checkbox] { cursor: pointer; }
+  .assignment-note {
+    margin-top: 0.5rem;
+    padding-left: 1.5rem;
+    display: none;
+  }
+  .assignment-note.visible { display: block; }
+  .assignment-note input {
+    width: 100%;
+    padding: 0.4rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    background: white;
+  }
+  .assignment-note input:focus { outline: none; border-color: var(--accent-mid); }
+
+  /* ── Empty state ── */
+  .empty {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--ink-faint);
+  }
+  .empty .icon { font-size: 3rem; margin-bottom: 1rem; }
+  .empty p { font-size: 0.9rem; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    background: var(--ink);
+    color: white;
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    opacity: 0;
+    transition: opacity 0.25s;
+    z-index: 999;
+    pointer-events: none;
+    max-width: 320px;
+  }
+  #toast.show { opacity: 1; }
+
+  /* ── Spinner ── */
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Stats row ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .stat-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    text-align: center;
+  }
+  .stat-card .num {
+    font-family: 'Lora', serif;
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .stat-card .lbl { font-size: 0.78rem; color: var(--ink-light); margin-top: 0.2rem; }
+
+  .chevron { transition: transform 0.2s; display: inline-block; }
+  .chevron.open { transform: rotate(90deg); }
+
+  @media (max-width: 600px) {
+    header { padding: 0 1rem; }
+    header h1 { font-size: 1rem; }
+    nav button { padding: 0.35rem 0.6rem; font-size: 0.78rem; }
+    main { padding: 1.25rem 1rem; }
+    .cards-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📖 <span>Reading</span> Tracker</h1>
+  <nav>
+    <button class="active" onclick="showView('books')">My Books</button>
+    <button onclick="showView('challenges')">Challenges</button>
+    <button onclick="showView('manage')">Manage</button>
+  </nav>
+</header>
+
+<main>
+  <!-- Setup banner -->
+  <div id="setup-banner">
+    <p>
+      <strong>⚙️ Connect to Supabase</strong>
+      Enter your Supabase URL and anon key to save data across all your devices.
+    </p>
+    <div class="fields">
+      <input type="text" id="sb-url" placeholder="https://xxxx.supabase.co" />
+      <input type="text" id="sb-key" placeholder="your-anon-key" />
+      <button class="btn btn-accent btn-sm" onclick="connectSupabase()">Connect</button>
+      <button class="btn btn-ghost btn-sm" onclick="dismissSetup()">Use offline</button>
+    </div>
+  </div>
+
+  <!-- BOOKS VIEW -->
+  <div id="view-books" class="view active">
+    <div class="page-header">
+      <h2>My Books</h2>
+      <button class="btn btn-primary" onclick="openBookModal()">+ Add book</button>
+    </div>
+
+    <div class="stats-row" id="stats-row"></div>
+
+    <div class="filters" id="status-filters">
+      <button class="filter-btn active" onclick="setFilter('status','all',this)">All</button>
+      <button class="filter-btn" onclick="setFilter('status','to-read',this)">To read</button>
+      <button class="filter-btn" onclick="setFilter('status','reading',this)">Reading</button>
+      <button class="filter-btn" onclick="setFilter('status','done',this)">Done</button>
+      <div class="filter-sep"></div>
+      <span id="group-filters" style="display:flex;gap:.5rem;flex-wrap:wrap;"></span>
+    </div>
+
+    <div class="search-bar">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--ink-faint);flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="book-search-input" placeholder="Search by title or author…" oninput="renderBooks()">
+    </div>
+
+    <div class="cards-grid" id="books-grid"></div>
+  </div>
+
+  <!-- CHALLENGES VIEW -->
+  <div id="view-challenges" class="view">
+    <div class="page-header">
+      <h2>Challenges</h2>
+    </div>
+    <div id="challenges-content"></div>
+  </div>
+
+  <!-- MANAGE VIEW -->
+  <div id="view-manage" class="view">
+    <div class="page-header">
+      <h2>Manage</h2>
+    </div>
+    <div class="manage-grid">
+      <div class="manage-section">
+        <h3>Reading Groups</h3>
+        <div id="groups-list"></div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="openGroupModal()">+ Add group</button>
+      </div>
+      <div class="manage-section">
+        <h3>Challenges</h3>
+        <div id="challenges-list"></div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="openChallengeModal()">+ Add challenge</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Book modal -->
+<div id="book-modal" class="modal-backdrop" style="display:none" onclick="closeModal('book-modal',event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="book-modal-title">Add book</h2>
+      <button class="modal-close" onclick="closeModal('book-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Search Open Library</label>
+        <div style="display:flex;gap:.5rem">
+          <input type="text" id="ol-search" placeholder="Title or author…" onkeydown="if(event.key==='Enter')searchOpenLibrary()">
+          <button class="btn btn-ghost btn-sm" onclick="searchOpenLibrary()" id="ol-btn">Search</button>
+        </div>
+        <div id="ol-results"></div>
+      </div>
+
+      <div style="text-align:center;color:var(--ink-faint);font-size:.82rem;margin:-.25rem 0 1rem">— or fill in manually —</div>
+
+      <input type="hidden" id="book-id">
+      <input type="hidden" id="book-cover-url">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Title *</label>
+          <input type="text" id="book-title" placeholder="The book title">
+        </div>
+        <div class="form-group">
+          <label>Author *</label>
+          <input type="text" id="book-author" placeholder="Author name">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Year</label>
+          <input type="text" id="book-year" placeholder="2024">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="book-status">
+            <option value="to-read">To read</option>
+            <option value="reading">Reading</option>
+            <option value="done">Done</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Assign to challenges</label>
+        <div id="challenge-assignments" style="max-height:220px;overflow-y:auto;"></div>
+      </div>
+
+      <div class="form-footer">
+        <button class="btn btn-ghost" onclick="closeModal('book-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveBook()">Save book</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Group modal -->
+<div id="group-modal" class="modal-backdrop" style="display:none" onclick="closeModal('group-modal',event)">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h2 id="group-modal-title">Add group</h2>
+      <button class="modal-close" onclick="closeModal('group-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="group-id">
+      <div class="form-group">
+        <label>Group name *</label>
+        <input type="text" id="group-name" placeholder="e.g. Dutch Readers Club">
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" id="group-desc" placeholder="Optional short description">
+      </div>
+      <div class="form-footer">
+        <button class="btn btn-ghost" onclick="closeModal('group-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveGroup()">Save group</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Challenge modal -->
+<div id="challenge-modal" class="modal-backdrop" style="display:none" onclick="closeModal('challenge-modal',event)">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <h2 id="challenge-modal-title">Add challenge</h2>
+      <button class="modal-close" onclick="closeModal('challenge-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="challenge-id">
+      <div class="form-group">
+        <label>Group *</label>
+        <select id="challenge-group"></select>
+      </div>
+      <div class="form-group">
+        <label>Challenge name *</label>
+        <input type="text" id="challenge-name" placeholder="e.g. A book set in Asia">
+      </div>
+      <div class="form-group">
+        <label>Period</label>
+        <input type="text" id="challenge-period" placeholder="e.g. January, Summer, Year-round">
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="challenge-desc" placeholder="Details about this challenge…" style="min-height:70px"></textarea>
+      </div>
+      <div class="form-footer">
+        <button class="btn btn-ghost" onclick="closeModal('challenge-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveChallenge()">Save challenge</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── State ──
+let db = null;
+let groups = [];
+let challenges = [];
+let books = [];
+let assignments = []; // {book_id, challenge_id, note}
+
+let filters = { status: 'all', group: 'all' };
+let editingBookId = null;
+
+// ── Supabase ──
+function connectSupabase() {
+  const url = document.getElementById('sb-url').value.trim();
+  const key = document.getElementById('sb-key').value.trim();
+  if (!url || !key) { toast('Please enter both URL and key'); return; }
+
+  try {
+    db = supabase.createClient(url, key);
+    localStorage.setItem('sb_url', url);
+    localStorage.setItem('sb_key', key);
+    document.getElementById('setup-banner').style.display = 'none';
+    toast('Connected! Setting up database…');
+    setupDatabase();
+  } catch(e) {
+    toast('Connection failed: ' + e.message);
+  }
+}
+
+async function setupDatabase() {
+  // Tables are created via Supabase dashboard — we just load data
+  await loadAll();
+}
+
+function dismissSetup() {
+  document.getElementById('setup-banner').style.display = 'none';
+  toast('Running offline — data saved locally');
+}
+
+async function loadAll() {
+  if (db) {
+    const [g, c, b, a] = await Promise.all([
+      db.from('groups').select('*').order('created_at'),
+      db.from('challenges').select('*').order('created_at'),
+      db.from('books').select('*').order('created_at'),
+      db.from('assignments').select('*'),
+    ]);
+    if (g.error) { handleDbError(g.error); return; }
+    groups = g.data || [];
+    challenges = c.data || [];
+    books = b.data || [];
+    assignments = a.data || [];
+  } else {
+    groups = JSON.parse(localStorage.getItem('groups') || '[]');
+    challenges = JSON.parse(localStorage.getItem('challenges') || '[]');
+    books = JSON.parse(localStorage.getItem('books') || '[]');
+    assignments = JSON.parse(localStorage.getItem('assignments') || '[]');
+  }
+  renderAll();
+}
+
+function saveLocal() {
+  localStorage.setItem('groups', JSON.stringify(groups));
+  localStorage.setItem('challenges', JSON.stringify(challenges));
+  localStorage.setItem('books', JSON.stringify(books));
+  localStorage.setItem('assignments', JSON.stringify(assignments));
+}
+
+function handleDbError(err) {
+  console.error(err);
+  if (err.message && err.message.includes('does not exist')) {
+    toast('⚠️ Tables not found — check the setup instructions');
+  } else {
+    toast('DB error: ' + err.message);
+  }
+}
+
+// ── Views ──
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  event.target.classList.add('active');
+  if (name === 'challenges') renderChallengesView();
+  if (name === 'manage') renderManageView();
+}
+
+// ── Render books ──
+function renderAll() {
+  renderStats();
+  renderGroupFilters();
+  renderBooks();
+  renderChallengesView();
+  renderManageView();
+}
+
+function renderStats() {
+  const toRead = books.filter(b => b.status === 'to-read').length;
+  const reading = books.filter(b => b.status === 'reading').length;
+  const done = books.filter(b => b.status === 'done').length;
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat-card"><div class="num">${books.length}</div><div class="lbl">Total books</div></div>
+    <div class="stat-card"><div class="num" style="color:var(--amber)">${toRead}</div><div class="lbl">To read</div></div>
+    <div class="stat-card"><div class="num" style="color:var(--blue)">${reading}</div><div class="lbl">Reading</div></div>
+    <div class="stat-card"><div class="num" style="color:var(--green)">${done}</div><div class="lbl">Done</div></div>
+    <div class="stat-card"><div class="num" style="color:var(--accent)">${challenges.length}</div><div class="lbl">Challenges</div></div>
+  `;
+}
+
+function renderGroupFilters() {
+  const cont = document.getElementById('group-filters');
+  cont.innerHTML = '';
+  if (groups.length === 0) return;
+  const allBtn = document.createElement('button');
+  allBtn.className = 'filter-btn' + (filters.group === 'all' ? ' active' : '');
+  allBtn.textContent = 'All groups';
+  allBtn.onclick = function() { setFilter('group','all',this); };
+  cont.appendChild(allBtn);
+  groups.forEach(g => {
+    const btn = document.createElement('button');
+    btn.className = 'filter-btn' + (filters.group === g.id ? ' active' : '');
+    btn.textContent = g.name;
+    btn.onclick = function() { setFilter('group', g.id, this); };
+    cont.appendChild(btn);
+  });
+}
+
+function setFilter(key, val, btn) {
+  filters[key] = val;
+  const parent = btn.closest('.filters, #group-filters');
+  if (parent) {
+    parent.querySelectorAll('.filter-btn').forEach(b => {
+      if (b.closest('#group-filters') === null || key === 'group')
+        b.classList.remove('active');
+    });
+    if (key === 'status') {
+      document.querySelectorAll('#status-filters > .filter-btn').forEach(b => b.classList.remove('active'));
+    }
+  }
+  btn.classList.add('active');
+  renderBooks();
+}
+
+function renderBooks() {
+  const query = document.getElementById('book-search-input').value.toLowerCase();
+  let filtered = books.filter(b => {
+    if (filters.status !== 'all' && b.status !== filters.status) return false;
+    if (filters.group !== 'all') {
+      const bookChallengeIds = assignments.filter(a => a.book_id === b.id).map(a => a.challenge_id);
+      const bookGroupIds = challenges.filter(c => bookChallengeIds.includes(c.id)).map(c => c.group_id);
+      if (!bookGroupIds.includes(filters.group)) return false;
+    }
+    if (query) {
+      const title = (b.title || '').toLowerCase();
+      const author = (b.author || '').toLowerCase();
+      if (!title.includes(query) && !author.includes(query)) return false;
+    }
+    return true;
+  });
+
+  const grid = document.getElementById('books-grid');
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="icon">📚</div><p>No books yet. Add your first book!</p></div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(b => {
+    const bookAssignments = assignments.filter(a => a.book_id === b.id);
+    const bookChallenges = bookAssignments.map(a => challenges.find(c => c.id === a.challenge_id)).filter(Boolean);
+    const tags = bookChallenges.map(c => `<span class="challenge-tag" title="${c.name}">${c.name}</span>`).join('');
+    const note = bookAssignments.find(a => a.note)?.note || '';
+    const statusLabel = b.status === 'to-read' ? 'To read' : b.status === 'reading' ? 'Reading' : 'Done';
+    const cover = b.cover_url
+      ? `<img src="${b.cover_url}" alt="Cover" loading="lazy">`
+      : `<div class="no-cover">📖</div>`;
+    return `
+      <div class="card book-card">
+        <div class="book-card-cover">
+          ${cover}
+          <span class="status-badge ${b.status}">${statusLabel}</span>
+        </div>
+        <div class="book-card-body">
+          <h3>${esc(b.title)}</h3>
+          <div class="author">${esc(b.author)}${b.year ? ' · ' + b.year : ''}</div>
+          ${tags ? `<div class="challenge-tags">${tags}</div>` : ''}
+          ${note ? `<div class="book-note">"${esc(note)}"</div>` : ''}
+          <div class="book-card-actions">
+            <button class="btn btn-ghost btn-sm" onclick="editBook('${b.id}')">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteBook('${b.id}')">Delete</button>
+            ${b.status !== 'done' ? `<button class="btn btn-ghost btn-sm" onclick="quickStatus('${b.id}','${b.status === 'to-read' ? 'reading' : 'done'}')" style="margin-left:auto">${b.status === 'to-read' ? '▶ Start' : '✓ Done'}</button>` : ''}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── Challenges view ──
+function renderChallengesView() {
+  const cont = document.getElementById('challenges-content');
+  if (groups.length === 0) {
+    cont.innerHTML = `<div class="empty"><div class="icon">🏆</div><p>No groups yet. Go to <strong>Manage</strong> to add your reading groups and challenges.</p></div>`;
+    return;
+  }
+  cont.innerHTML = groups.map(g => {
+    const gChallenges = challenges.filter(c => c.group_id === g.id);
+    const rows = gChallenges.map(c => {
+      const cAssignments = assignments.filter(a => a.challenge_id === c.id);
+      const cBooks = cAssignments.map(a => books.find(b => b.id === a.book_id)).filter(Boolean);
+      const bookRows = cBooks.map(b => {
+        const note = cAssignments.find(a => a.book_id === b.id)?.note || '';
+        const cover = b.cover_url
+          ? `<img src="${b.cover_url}" alt="" loading="lazy">`
+          : `<div class="no-img">📖</div>`;
+        return `
+          <div class="challenge-book-row">
+            <div class="challenge-book-cover">${cover}</div>
+            <div class="challenge-book-info">
+              <strong>${esc(b.title)}</strong>
+              <small>${esc(b.author)}</small>
+            </div>
+            <span class="status-badge ${b.status}" style="font-size:.7rem">${b.status === 'to-read' ? 'To read' : b.status === 'reading' ? 'Reading' : 'Done'}</span>
+            ${note ? `<div class="challenge-book-note" title="${esc(note)}">${esc(note)}</div>` : ''}
+          </div>`;
+      }).join('');
+      return `
+        <div class="challenge-row">
+          <div class="challenge-row-header" onclick="toggleChallenge(this)">
+            <span class="chevron">▶</span>
+            <span class="challenge-name">${esc(c.name)}</span>
+            ${c.period ? `<span class="challenge-period">${esc(c.period)}</span>` : ''}
+            <span class="challenge-count">${cBooks.length} book${cBooks.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div class="challenge-books">
+            ${c.description ? `<p style="font-size:.82rem;color:var(--ink-light);margin:.5rem 0">${esc(c.description)}</p>` : ''}
+            ${bookRows || '<p style="font-size:.82rem;color:var(--ink-faint);padding:.5rem 0">No books assigned yet</p>'}
+          </div>
+        </div>`;
+    }).join('');
+    return `
+      <div class="group-section">
+        <div class="group-header">
+          <h3>${esc(g.name)}</h3>
+          <span class="group-badge">${gChallenges.length} challenge${gChallenges.length !== 1 ? 's' : ''}</span>
+          <div class="group-header-actions">
+            <button class="btn btn-ghost btn-sm" onclick="openChallengeModal('${g.id}')">+ Challenge</button>
+          </div>
+        </div>
+        ${rows || '<p style="color:var(--ink-faint);font-size:.875rem">No challenges yet</p>'}
+      </div>`;
+  }).join('');
+}
+
+function toggleChallenge(header) {
+  const books = header.nextElementSibling;
+  const chevron = header.querySelector('.chevron');
+  books.classList.toggle('open');
+  chevron.classList.toggle('open');
+}
+
+// ── Manage view ──
+function renderManageView() {
+  const gl = document.getElementById('groups-list');
+  gl.innerHTML = groups.length === 0
+    ? '<p style="color:var(--ink-faint);font-size:.875rem;margin-bottom:.5rem">No groups yet</p>'
+    : groups.map(g => `
+        <div class="manage-item">
+          <span>${esc(g.name)}</span>
+          <small>${challenges.filter(c => c.group_id === g.id).length} challenges</small>
+          <button class="btn btn-ghost btn-sm" onclick="editGroup('${g.id}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteGroup('${g.id}')">Del</button>
+        </div>`).join('');
+
+  const cl = document.getElementById('challenges-list');
+  cl.innerHTML = challenges.length === 0
+    ? '<p style="color:var(--ink-faint);font-size:.875rem;margin-bottom:.5rem">No challenges yet</p>'
+    : challenges.map(c => {
+        const g = groups.find(g => g.id === c.group_id);
+        return `
+          <div class="manage-item">
+            <span>${esc(c.name)}<br><small style="color:var(--ink-faint)">${g ? esc(g.name) : ''}${c.period ? ' · ' + c.period : ''}</small></span>
+            <button class="btn btn-ghost btn-sm" onclick="editChallenge('${c.id}')">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteChallenge('${c.id}')">Del</button>
+          </div>`;
+      }).join('');
+}
+
+// ── Book modal ──
+function openBookModal(bookId) {
+  editingBookId = bookId || null;
+  document.getElementById('book-modal-title').textContent = bookId ? 'Edit book' : 'Add book';
+  document.getElementById('ol-search').value = '';
+  document.getElementById('ol-results').innerHTML = '';
+  document.getElementById('book-id').value = '';
+  document.getElementById('book-cover-url').value = '';
+  document.getElementById('book-title').value = '';
+  document.getElementById('book-author').value = '';
+  document.getElementById('book-year').value = '';
+  document.getElementById('book-status').value = 'to-read';
+
+  if (bookId) {
+    const b = books.find(b => b.id === bookId);
+    if (b) {
+      document.getElementById('book-id').value = b.id;
+      document.getElementById('book-cover-url').value = b.cover_url || '';
+      document.getElementById('book-title').value = b.title;
+      document.getElementById('book-author').value = b.author;
+      document.getElementById('book-year').value = b.year || '';
+      document.getElementById('book-status').value = b.status;
+    }
+  }
+
+  // Render challenge assignments
+  const cont = document.getElementById('challenge-assignments');
+  if (challenges.length === 0) {
+    cont.innerHTML = '<p style="color:var(--ink-faint);font-size:.82rem">No challenges yet — add some in Manage first</p>';
+  } else {
+    const bookAssignments = bookId ? assignments.filter(a => a.book_id === bookId) : [];
+    cont.innerHTML = challenges.map(c => {
+      const g = groups.find(g => g.id === c.group_id);
+      const existing = bookAssignments.find(a => a.challenge_id === c.id);
+      const checked = existing ? 'checked' : '';
+      const noteVal = existing?.note || '';
+      return `
+        <div class="challenge-assignment">
+          <label>
+            <input type="checkbox" value="${c.id}" ${checked} onchange="toggleAssignmentNote(this)">
+            <span style="font-size:.875rem;font-weight:500">${esc(c.name)}</span>
+            ${g ? `<span style="font-size:.75rem;color:var(--ink-faint);margin-left:.25rem">${esc(g.name)}</span>` : ''}
+          </label>
+          <div class="assignment-note ${checked ? 'visible' : ''}">
+            <input type="text" placeholder="Why this book? (e.g. set in Japan, female author…)" value="${esc(noteVal)}" data-challenge="${c.id}">
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  document.getElementById('book-modal').style.display = 'flex';
+}
+
+function editBook(id) { openBookModal(id); }
+
+function toggleAssignmentNote(checkbox) {
+  const noteDiv = checkbox.closest('.challenge-assignment').querySelector('.assignment-note');
+  noteDiv.classList.toggle('visible', checkbox.checked);
+}
+
+async function saveBook() {
+  const title = document.getElementById('book-title').value.trim();
+  const author = document.getElementById('book-author').value.trim();
+  if (!title || !author) { toast('Title and author are required'); return; }
+
+  const bookData = {
+    title,
+    author,
+    year: document.getElementById('book-year').value.trim() || null,
+    status: document.getElementById('book-status').value,
+    cover_url: document.getElementById('book-cover-url').value || null,
+  };
+
+  // Collect assignments
+  const newAssignments = [];
+  document.querySelectorAll('#challenge-assignments input[type=checkbox]:checked').forEach(cb => {
+    const noteInput = cb.closest('.challenge-assignment').querySelector('input[type=text]');
+    newAssignments.push({ challenge_id: cb.value, note: noteInput?.value?.trim() || null });
+  });
+
+  if (db) {
+    let bookId = editingBookId;
+    if (bookId) {
+      const { error } = await db.from('books').update(bookData).eq('id', bookId);
+      if (error) { handleDbError(error); return; }
+    } else {
+      const { data, error } = await db.from('books').insert(bookData).select().single();
+      if (error) { handleDbError(error); return; }
+      bookId = data.id;
+    }
+    // Delete old assignments, insert new
+    await db.from('assignments').delete().eq('book_id', bookId);
+    if (newAssignments.length > 0) {
+      await db.from('assignments').insert(newAssignments.map(a => ({ ...a, book_id: bookId })));
+    }
+  } else {
+    let bookId = editingBookId;
+    if (bookId) {
+      books = books.map(b => b.id === bookId ? { ...b, ...bookData } : b);
+    } else {
+      bookId = uid();
+      books.push({ id: bookId, ...bookData, created_at: new Date().toISOString() });
+    }
+    assignments = assignments.filter(a => a.book_id !== bookId);
+    newAssignments.forEach(a => assignments.push({ id: uid(), book_id: bookId, ...a }));
+    saveLocal();
+  }
+
+  await loadAll();
+  closeModal('book-modal');
+  toast(editingBookId ? 'Book updated!' : 'Book added!');
+}
+
+async function deleteBook(id) {
+  if (!confirm('Delete this book?')) return;
+  if (db) {
+    await db.from('assignments').delete().eq('book_id', id);
+    await db.from('books').delete().eq('id', id);
+  } else {
+    books = books.filter(b => b.id !== id);
+    assignments = assignments.filter(a => a.book_id !== id);
+    saveLocal();
+  }
+  await loadAll();
+  toast('Book deleted');
+}
+
+async function quickStatus(id, newStatus) {
+  if (db) {
+    await db.from('books').update({ status: newStatus }).eq('id', id);
+  } else {
+    books = books.map(b => b.id === id ? { ...b, status: newStatus } : b);
+    saveLocal();
+  }
+  await loadAll();
+  toast('Status updated!');
+}
+
+// ── Open Library search ──
+async function searchOpenLibrary() {
+  const q = document.getElementById('ol-search').value.trim();
+  if (!q) return;
+  const btn = document.getElementById('ol-btn');
+  btn.innerHTML = '<span class="spinner"></span>';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=8&fields=key,title,author_name,first_publish_year,cover_i`);
+    const data = await res.json();
+    const results = data.docs || [];
+    document.getElementById('ol-results').innerHTML = results.length === 0
+      ? '<p style="padding:.75rem;color:var(--ink-faint);font-size:.82rem">No results found</p>'
+      : `<div class="search-results">${results.map(r => {
+          const cover = r.cover_i ? `https://covers.openlibrary.org/b/id/${r.cover_i}-S.jpg` : '';
+          const author = (r.author_name || []).join(', ');
+          return `<div class="search-result-item" onclick="selectBook(${JSON.stringify({
+            title: r.title,
+            author,
+            year: r.first_publish_year,
+            cover: r.cover_i ? `https://covers.openlibrary.org/b/id/${r.cover_i}-M.jpg` : ''
+          }).replace(/"/g,'&quot;')})">
+            ${cover ? `<img src="${cover}" alt="">` : '<div style="width:32px;height:44px;background:var(--accent-light);border-radius:3px;flex-shrink:0"></div>'}
+            <div class="info"><strong>${esc(r.title)}</strong><small>${author}${r.first_publish_year ? ' · ' + r.first_publish_year : ''}</small></div>
+          </div>`;
+        }).join('')}</div>`;
+  } catch(e) {
+    document.getElementById('ol-results').innerHTML = '<p style="padding:.75rem;color:var(--red);font-size:.82rem">Search failed — check your connection</p>';
+  }
+
+  btn.innerHTML = 'Search';
+  btn.disabled = false;
+}
+
+function selectBook(data) {
+  document.getElementById('book-title').value = data.title;
+  document.getElementById('book-author').value = data.author;
+  document.getElementById('book-year').value = data.year || '';
+  document.getElementById('book-cover-url').value = data.cover || '';
+  document.getElementById('ol-results').innerHTML = `<p style="font-size:.8rem;color:var(--green);padding:.4rem 0">✓ Book selected — you can still edit the fields below</p>`;
+}
+
+// ── Group modal ──
+function openGroupModal(id) {
+  document.getElementById('group-id').value = id || '';
+  document.getElementById('group-modal-title').textContent = id ? 'Edit group' : 'Add group';
+  const g = id ? groups.find(g => g.id === id) : null;
+  document.getElementById('group-name').value = g?.name || '';
+  document.getElementById('group-desc').value = g?.description || '';
+  document.getElementById('group-modal').style.display = 'flex';
+}
+
+function editGroup(id) { openGroupModal(id); }
+
+async function saveGroup() {
+  const name = document.getElementById('group-name').value.trim();
+  if (!name) { toast('Group name is required'); return; }
+  const data = { name, description: document.getElementById('group-desc').value.trim() || null };
+  const id = document.getElementById('group-id').value;
+
+  if (db) {
+    if (id) {
+      await db.from('groups').update(data).eq('id', id);
+    } else {
+      await db.from('groups').insert(data);
+    }
+  } else {
+    if (id) {
+      groups = groups.map(g => g.id === id ? { ...g, ...data } : g);
+    } else {
+      groups.push({ id: uid(), ...data, created_at: new Date().toISOString() });
+    }
+    saveLocal();
+  }
+  await loadAll();
+  closeModal('group-modal');
+  toast(id ? 'Group updated!' : 'Group added!');
+}
+
+async function deleteGroup(id) {
+  if (!confirm('Delete this group and all its challenges?')) return;
+  const cIds = challenges.filter(c => c.group_id === id).map(c => c.id);
+  if (db) {
+    for (const cId of cIds) await db.from('assignments').delete().eq('challenge_id', cId);
+    await db.from('challenges').delete().eq('group_id', id);
+    await db.from('groups').delete().eq('id', id);
+  } else {
+    cIds.forEach(cId => { assignments = assignments.filter(a => a.challenge_id !== cId); });
+    challenges = challenges.filter(c => c.group_id !== id);
+    groups = groups.filter(g => g.id !== id);
+    saveLocal();
+  }
+  await loadAll();
+  toast('Group deleted');
+}
+
+// ── Challenge modal ──
+function openChallengeModal(preGroupId) {
+  document.getElementById('challenge-id').value = '';
+  document.getElementById('challenge-modal-title').textContent = 'Add challenge';
+  document.getElementById('challenge-name').value = '';
+  document.getElementById('challenge-period').value = '';
+  document.getElementById('challenge-desc').value = '';
+  const sel = document.getElementById('challenge-group');
+  sel.innerHTML = groups.map(g => `<option value="${g.id}" ${g.id === preGroupId ? 'selected' : ''}>${esc(g.name)}</option>`).join('');
+  if (groups.length === 0) {
+    toast('Add a group first!'); return;
+  }
+  document.getElementById('challenge-modal').style.display = 'flex';
+}
+
+function editChallenge(id) {
+  const c = challenges.find(c => c.id === id);
+  if (!c) return;
+  document.getElementById('challenge-id').value = id;
+  document.getElementById('challenge-modal-title').textContent = 'Edit challenge';
+  document.getElementById('challenge-name').value = c.name;
+  document.getElementById('challenge-period').value = c.period || '';
+  document.getElementById('challenge-desc').value = c.description || '';
+  const sel = document.getElementById('challenge-group');
+  sel.innerHTML = groups.map(g => `<option value="${g.id}" ${g.id === c.group_id ? 'selected' : ''}>${esc(g.name)}</option>`).join('');
+  document.getElementById('challenge-modal').style.display = 'flex';
+}
+
+async function saveChallenge() {
+  const name = document.getElementById('challenge-name').value.trim();
+  const group_id = document.getElementById('challenge-group').value;
+  if (!name || !group_id) { toast('Name and group are required'); return; }
+  const data = {
+    name, group_id,
+    period: document.getElementById('challenge-period').value.trim() || null,
+    description: document.getElementById('challenge-desc').value.trim() || null,
+  };
+  const id = document.getElementById('challenge-id').value;
+
+  if (db) {
+    if (id) {
+      await db.from('challenges').update(data).eq('id', id);
+    } else {
+      await db.from('challenges').insert(data);
+    }
+  } else {
+    if (id) {
+      challenges = challenges.map(c => c.id === id ? { ...c, ...data } : c);
+    } else {
+      challenges.push({ id: uid(), ...data, created_at: new Date().toISOString() });
+    }
+    saveLocal();
+  }
+  await loadAll();
+  closeModal('challenge-modal');
+  toast(id ? 'Challenge updated!' : 'Challenge added!');
+}
+
+async function deleteChallenge(id) {
+  if (!confirm('Delete this challenge?')) return;
+  if (db) {
+    await db.from('assignments').delete().eq('challenge_id', id);
+    await db.from('challenges').delete().eq('id', id);
+  } else {
+    assignments = assignments.filter(a => a.challenge_id !== id);
+    challenges = challenges.filter(c => c.id !== id);
+    saveLocal();
+  }
+  await loadAll();
+  toast('Challenge deleted');
+}
+
+// ── Utils ──
+function closeModal(id, event) {
+  if (event && event.target !== document.getElementById(id)) return;
+  document.getElementById(id).style.display = 'none';
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+// ── Init ──
+window.addEventListener('load', () => {
+  // Try to reconnect Supabase from stored creds
+  const url = localStorage.getItem('sb_url');
+  const key = localStorage.getItem('sb_key');
+  if (url && key) {
+    document.getElementById('sb-url').value = url;
+    document.getElementById('sb-key').value = key;
+    try {
+      db = supabase.createClient(url, key);
+      document.getElementById('setup-banner').style.display = 'none';
+    } catch(e) {}
+  }
+  loadAll();
+});
+</script>
+</body>
+</html>
