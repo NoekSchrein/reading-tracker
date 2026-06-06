@@ -64,6 +64,9 @@ header h1 {
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
+
+header h1:hover { cursor: pointer; }
+
 header h1 span {
   color: var(--candy);
   font-style: italic;
@@ -760,4 +763,41 @@ main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
 .challenge-deadline.overdue {
   background: #fff0f0;
   color: var(--red, #9b2c2c);
+}
+/* ── Icon upload ── */
+.icon-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.icon-preview {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid var(--border2);
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface2);
+  font-size: 1.5rem;
+}
+.icon-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.icon-upload-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+.group-link-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
 }
