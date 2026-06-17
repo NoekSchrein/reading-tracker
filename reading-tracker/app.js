@@ -117,11 +117,18 @@ function renderHome() {
       const cover = b.cover_url
         ? `<div class="mini-cover"><img src="${b.cover_url}" alt=""></div>`
         : `<div class="mini-cover">📖</div>`;
+      const bookChallengeNames = assignments
+        .filter(a => a.book_id === b.id)
+        .map(a => challenges.find(c => c.id === a.challenge_id))
+        .filter(Boolean)
+        .map(c => `<span class="mini-challenge-tag">${esc(c.name)}</span>`)
+        .join('');
       return `<div class="mini-book-row">
         ${cover}
         <div class="mini-info">
           <strong>${esc(b.title)}</strong>
           <small>${esc(b.author)}</small>
+          ${bookChallengeNames ? `<div class="mini-challenge-tags">${bookChallengeNames}</div>` : ''}
         </div>
         ${b.goodreads_url ? `<a href="${b.goodreads_url}" target="_blank" rel="noopener" class="btn btn-goodreads btn-sm">↗</a>` : ''}
         <button class="btn btn-ghost btn-sm" onclick="quickStatus('${b.id}','done')">✓ Klaar</button>
@@ -140,17 +147,18 @@ function renderHome() {
       </div>
     </a>`).join('');
 
-  const localGroupLinks = groups.filter(g => g.goodreads_url).map(g => `
-    <a href="${esc(g.goodreads_url)}" target="_blank" rel="noopener" class="group-link-card">
+  const localGroupLinks = groups.map(g => `
+    <div class="group-link-card" onclick="openGroupPopup('${g.id}')" style="cursor:pointer">
       ${g.icon_url
         ? `<img class="group-link-icon" src="${esc(g.icon_url)}" alt="${esc(g.name)}">`
         : `<div class="group-link-icon" style="background:var(--berry);display:flex;align-items:center;justify-content:center;font-size:1.1rem;">📚</div>`
       }
       <div class="group-link-info">
         <strong>${esc(g.name)}</strong>
-        <small>Open in Goodreads ↗</small>
+        <small>${challenges.filter(c => c.group_id === g.id).length} lopende opdrachten</small>
       </div>
-    </a>`).join('');
+      <span style="color:var(--blush);font-size:1rem">›</span>
+    </div>`).join('');
 
   gl.innerHTML = groupCards + localGroupLinks;
 
@@ -160,22 +168,90 @@ function renderHome() {
     cp.innerHTML = '<p style="font-size:.85rem;color:var(--ink-faint)">Nog geen opdrachten - ga naar beheer om er een toe te voegen</p>';
     return;
   }
-  cp.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.75rem">` +
-    challenges.map(c => {
+
+  // Sort controls
+  const currentSort = window._challengeSort || 'deadline';
+  const sortOptions = [
+    { val: 'deadline', lbl: '📅 Deadline' },
+    { val: 'started', lbl: '▶ Gestart' },
+    { val: 'progress', lbl: '📊 Voortgang' },
+    { val: 'group', lbl: '👥 Groep' },
+  ];
+
+  let sortedChallenges = [...challenges];
+  if (currentSort === 'deadline') {
+    sortedChallenges.sort((a, b) => {
+      if (!a.deadline && !b.deadline) return 0;
+      if (!a.deadline) return 1;
+      if (!b.deadline) return -1;
+      return new Date(a.deadline) - new Date(b.deadline);
+    });
+  } else if (currentSort === 'started') {
+    sortedChallenges.sort((a, b) => {
+      const aStarted = assignments.some(x => x.challenge_id === a.id && books.find(bk => bk.id === x.book_id && bk.status === 'reading'));
+      const bStarted = assignments.some(x => x.challenge_id === b.id && books.find(bk => bk.id === x.book_id && bk.status === 'reading'));
+      return (bStarted ? 1 : 0) - (aStarted ? 1 : 0);
+    });
+  } else if (currentSort === 'progress') {
+    sortedChallenges.sort((a, b) => {
+      const getPct = c => {
+        const cBooks = assignments.filter(x => x.challenge_id === c.id).map(x => books.find(bk => bk.id === x.book_id)).filter(Boolean);
+        return cBooks.length === 0 ? 0 : cBooks.filter(bk => bk.status === 'done').length / cBooks.length;
+      };
+      return getPct(b) - getPct(a);
+    });
+  } else if (currentSort === 'group') {
+    sortedChallenges.sort((a, b) => {
+      const gA = (groups.find(gr => gr.id === a.group_id)?.name || '').toLowerCase();
+      const gB = (groups.find(gr => gr.id === b.group_id)?.name || '').toLowerCase();
+      return gA.localeCompare(gB);
+    });
+  }
+
+  cp.innerHTML = `
+    <div class="challenge-sort-bar">
+      <span class="challenge-sort-label">Sorteren op:</span>
+      ${sortOptions.map(o => `<button class="sort-btn ${currentSort === o.val ? 'active' : ''}" onclick="setChallengeSort('${o.val}')">${o.lbl}</button>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.75rem">` +
+    sortedChallenges.map(c => {
       const g = groups.find(gr => gr.id === c.group_id);
       const cBooks = assignments.filter(a => a.challenge_id === c.id).map(a => books.find(b => b.id === a.book_id)).filter(Boolean);
       const done = cBooks.filter(b => b.status === 'done').length;
       const total = cBooks.length;
       const pct = total === 0 ? 0 : Math.round((done / total) * 100);
-      return `<div class="challenge-progress-row">
+      const isComplete = total > 0 && done === total;
+
+      // Deadline urgency
+      let daysLeft = null;
+      let urgencyClass = '';
+      let urgencyBanner = '';
+      if (c.deadline && !isComplete) {
+        daysLeft = Math.ceil((new Date(c.deadline) - new Date()) / (1000 * 60 * 60 * 24));
+        if (daysLeft < 0) {
+          urgencyClass = 'deadline-overdue';
+          urgencyBanner = `<div class="deadline-banner overdue">⚠️ Deadline verstreken (${Math.abs(daysLeft)} dag${Math.abs(daysLeft) !== 1 ? 'en' : ''} geleden)</div>`;
+        } else if (daysLeft <= 7) {
+          urgencyClass = 'deadline-critical';
+          urgencyBanner = `<div class="deadline-banner critical">🔥 Nog ${daysLeft} dag${daysLeft !== 1 ? 'en' : ''}!</div>`;
+        } else if (daysLeft <= 30) {
+          urgencyClass = 'deadline-soon';
+          urgencyBanner = `<div class="deadline-banner soon">⏰ Nog ${daysLeft} dagen</div>`;
+        }
+      }
+
+      const deadlineLabel = c.deadline ? new Date(c.deadline).toLocaleDateString('nl-NL',{day:'numeric',month:'short'}) : null;
+
+      return `<div class="challenge-progress-row ${urgencyClass}" onclick="openChallengeDetailPopup('${c.id}')" style="cursor:pointer">
+        ${urgencyBanner}
         <div class="challenge-progress-header">
-          <span class="challenge-progress-name">${c.goodreads_url ? `<a href="${c.goodreads_url}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;" title="Open op Goodreads">${esc(c.name)} ↗</a>` : esc(c.name)}</span>
+          <span class="challenge-progress-name">${esc(c.name)}</span>
           <span class="challenge-progress-count">${done}/${total} gelezen</span>
         </div>
         <div class="progress-bar-bg">
           <div class="progress-bar-fill" style="width:${pct}%"></div>
         </div>
-        <div class="challenge-progress-group">${g ? esc(g.name) : ''}${c.period ? ' · ' + c.period : ''}${c.points ? ' · <strong>' + c.points + ' pts</strong>' : ''}${c.deadline ? ' · deadline ' + new Date(c.deadline).toLocaleDateString('nl-NL',{day:'numeric',month:'short'}) : ''}</div>
+        <div class="challenge-progress-group">${g ? esc(g.name) : ''}${c.period ? ' · ' + c.period : ''}${c.points ? ' · <strong>' + c.points + ' pts</strong>' : ''}${deadlineLabel ? ' · deadline <strong>' + deadlineLabel + '</strong>' : ''}</div>
       </div>`;
     }).join('') + `</div>`;
 }
@@ -715,6 +791,152 @@ function esc(str) {
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+// ── Challenge sort ──
+function setChallengeSort(val) {
+  window._challengeSort = val;
+  renderHome();
+}
+
+// ── Group popup ──
+function openGroupPopup(groupId) {
+  const g = groups.find(gr => gr.id === groupId);
+  if (!g) return;
+  const gChallenges = challenges.filter(c => c.group_id === groupId);
+  const challengeRows = gChallenges.length === 0
+    ? '<p style="color:var(--ink-faint);font-size:.875rem;text-align:center;padding:1rem">Geen lopende opdrachten</p>'
+    : gChallenges.map(c => {
+        const cBooks = assignments.filter(a => a.challenge_id === c.id).map(a => books.find(b => b.id === a.book_id)).filter(Boolean);
+        const done = cBooks.filter(b => b.status === 'done').length;
+        const total = cBooks.length;
+        const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+        const deadlineStr = c.deadline ? new Date(c.deadline).toLocaleDateString('nl-NL',{day:'numeric',month:'short',year:'numeric'}) : null;
+        return `<div class="group-popup-challenge" onclick="closeGroupPopup();openChallengeDetailPopup('${c.id}','${groupId}')">
+          <div class="group-popup-challenge-header">
+            <span class="group-popup-challenge-name">${esc(c.name)}</span>
+            ${c.points ? `<span class="challenge-points">${c.points}pts</span>` : ''}
+          </div>
+          ${c.period || deadlineStr ? `<div style="font-size:.72rem;color:var(--ink-faint);margin:.15rem 0 .4rem">${c.period ? esc(c.period) : ''}${c.period && deadlineStr ? ' · ' : ''}${deadlineStr ? 'deadline ' + deadlineStr : ''}</div>` : ''}
+          <div class="progress-bar-bg" style="margin:.3rem 0 .2rem">
+            <div class="progress-bar-fill" style="width:${pct}%"></div>
+          </div>
+          <div style="font-size:.72rem;color:var(--ink-light)">${done}/${total} boeken gelezen</div>
+        </div>`;
+      }).join('');
+
+  const iconHtml = g.icon_url
+    ? `<img src="${esc(g.icon_url)}" alt="${esc(g.name)}" style="width:48px;height:48px;border-radius:50%;object-fit:cover">`
+    : `<div style="width:48px;height:48px;border-radius:50%;background:var(--berry);display:flex;align-items:center;justify-content:center;font-size:1.4rem">📚</div>`;
+
+  const el = document.getElementById('group-popup');
+  el.innerHTML = `
+    <div class="group-popup-box">
+      <div class="group-popup-header">
+        ${iconHtml}
+        <div style="flex:1;min-width:0">
+          <h3 style="font-family:'Playwrite GB J',cursive;font-size:1.1rem;color:var(--bordeaux)">${esc(g.name)}</h3>
+          ${g.description ? `<p style="font-size:.8rem;color:var(--ink-light);margin-top:.1rem">${esc(g.description)}</p>` : ''}
+        </div>
+        <button class="modal-close" onclick="closeGroupPopup()">×</button>
+      </div>
+      <div class="group-popup-body">
+        <h4 style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-light);margin-bottom:.75rem">Opdrachten (${gChallenges.length})</h4>
+        ${challengeRows}
+      </div>
+      ${g.goodreads_url ? `
+        <div class="group-popup-footer">
+          <a href="${esc(g.goodreads_url)}" target="_blank" rel="noopener" class="btn btn-goodreads" style="width:100%;justify-content:center">Open in Goodreads ↗</a>
+        </div>` : ''}
+    </div>`;
+  el.style.display = 'flex';
+}
+
+function closeGroupPopup() {
+  document.getElementById('group-popup').style.display = 'none';
+}
+
+// ── Challenge detail popup ──
+function openChallengeDetailPopup(challengeId, fromGroupId) {
+  const c = challenges.find(ch => ch.id === challengeId);
+  if (!c) return;
+  const g = groups.find(gr => gr.id === c.group_id);
+  const cBooks = assignments.filter(a => a.challenge_id === c.id).map(a => {
+    const bk = books.find(b => b.id === a.book_id);
+    return bk ? { book: bk, note: a.note } : null;
+  }).filter(Boolean);
+  const done = cBooks.filter(x => x.book.status === 'done').length;
+  const total = cBooks.length;
+  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+  const deadlineStr = c.deadline ? new Date(c.deadline).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'}) : null;
+
+  const bookRows = cBooks.length === 0
+    ? '<p style="color:var(--ink-faint);font-size:.875rem;padding:.5rem 0">Nog geen boeken gekoppeld aan deze opdracht</p>'
+    : cBooks.map(({ book: b, note }) => {
+        const statusLabel = b.status === 'to-read' ? 'Te lezen' : b.status === 'reading' ? 'Aan het lezen' : '✓ Gelezen';
+        const cover = b.cover_url
+          ? `<img src="${b.cover_url}" alt="Cover" style="width:38px;height:52px;object-fit:cover;border-radius:4px">`
+          : `<div style="width:38px;height:52px;background:var(--apricot);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:1.1rem">📖</div>`;
+        return `<div class="cdp-book-row">
+          ${cover}
+          <div class="cdp-book-info">
+            <strong>${esc(b.title)}</strong>
+            <small>${esc(b.author)}${b.year ? ' · ' + b.year : ''}</small>
+            ${note ? `<span class="challenge-book-note">${esc(note)}</span>` : ''}
+          </div>
+          <span class="status-badge ${b.status}" style="font-size:.68rem;flex-shrink:0">${statusLabel}</span>
+        </div>`;
+      }).join('');
+
+  // Deadline urgency for popup
+  let popupDaysLeft = null;
+  let popupUrgencyPill = '';
+  if (c.deadline && !(cBooks.length > 0 && cBooks.filter(x => x.book.status === 'done').length === cBooks.length)) {
+    popupDaysLeft = Math.ceil((new Date(c.deadline) - new Date()) / (1000 * 60 * 60 * 24));
+    if (popupDaysLeft < 0) {
+      popupUrgencyPill = `<span class="cdp-urgency-pill overdue">⚠️ Deadline verstreken</span>`;
+    } else if (popupDaysLeft <= 7) {
+      popupUrgencyPill = `<span class="cdp-urgency-pill critical">🔥 Nog ${popupDaysLeft} dag${popupDaysLeft !== 1 ? 'en' : ''}!</span>`;
+    } else if (popupDaysLeft <= 30) {
+      popupUrgencyPill = `<span class="cdp-urgency-pill soon">⏰ Nog ${popupDaysLeft} dagen</span>`;
+    }
+  }
+
+  const el = document.getElementById('challenge-detail-popup');
+  el.innerHTML = `
+    <div class="modal" style="max-width:500px">
+      <div class="modal-header">
+        <h2>${esc(c.name)}</h2>
+        <button class="btn btn-ghost btn-sm" onclick="closeChallengeDetailPopup();editChallenge('${c.id}')" title="Opdracht bewerken" style="padding:.35rem .7rem;font-size:.8rem">✏️ Bewerken</button>
+        <button class="modal-close" onclick="closeChallengeDetailPopup()">×</button>
+      </div>
+      <div class="modal-body">
+        ${fromGroupId ? `<button class="cdp-back-btn" onclick="closeChallengeDetailPopup();openGroupPopup('${fromGroupId}')">← Terug naar groep</button>` : ''}
+        ${popupUrgencyPill}
+        <div class="cdp-meta">
+          ${g ? `<span class="cdp-meta-pill">👥 ${esc(g.name)}</span>` : ''}
+          ${c.period ? `<span class="cdp-meta-pill">📅 ${esc(c.period)}</span>` : ''}
+          ${deadlineStr ? `<span class="cdp-meta-pill">⏰ ${deadlineStr}</span>` : ''}
+          ${c.points ? `<span class="cdp-meta-pill challenge-points">${c.points} pts${c.bonus_points ? ' + ' + c.bonus_points + ' bonus' : ''}</span>` : ''}
+        </div>
+        ${c.description ? `<div class="cdp-description">${esc(c.description)}</div>` : ''}
+        <div class="cdp-progress-section">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.4rem">
+            <span style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-light)">Voortgang</span>
+            <span style="font-size:.8rem;color:var(--ink-light)">${done}/${total} gelezen (${pct}%)</span>
+          </div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+        </div>
+        <h4 style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-light);margin:1.25rem 0 .6rem">Boeken</h4>
+        ${bookRows}
+        ${c.goodreads_url ? `<div style="margin-top:1.25rem"><a href="${esc(c.goodreads_url)}" target="_blank" rel="noopener" class="btn btn-goodreads" style="width:100%;justify-content:center">Open opdracht op Goodreads ↗</a></div>` : ''}
+      </div>
+    </div>`;
+  el.style.display = 'flex';
+}
+
+function closeChallengeDetailPopup() {
+  document.getElementById('challenge-detail-popup').style.display = 'none';
 }
 
 // ── Init ──

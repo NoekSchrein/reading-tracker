@@ -213,8 +213,10 @@
               <span class="icon-preview-placeholder">📖</span>
             </div>
             <div class="icon-upload-controls">
-              <input type="file" id="group-icon-file" accept="image/*" onchange="previewIcon(this)" style="display:none">
-              <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('group-icon-file').click()">Afbeelding kiezen</button>
+              <input type="file" id="group-icon-file" accept="image/*" onchange="previewIcon(this)"
+                style="display:none">
+              <button type="button" class="btn btn-ghost btn-sm"
+                onclick="document.getElementById('group-icon-file').click()">Afbeelding kiezen</button>
               <span id="group-icon-filename" style="font-size:.78rem;color:var(--ink-faint);margin-left:.5rem"></span>
             </div>
           </div>
@@ -290,6 +292,12 @@
   </div>
 
   <div id="toast"></div>
+
+  <!-- Group popup -->
+  <div id="group-popup" onclick="if(event.target===this)closeGroupPopup()"></div>
+
+  <!-- Challenge detail popup -->
+  <div id="challenge-detail-popup" onclick="if(event.target===this)closeChallengeDetailPopup()"></div>
 
   <script src="app.js"></script>
 </body>
