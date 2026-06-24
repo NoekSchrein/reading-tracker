@@ -1,305 +1,354 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="nl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Noeks Reading Log</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Playwrite+GB+J:ital,wght@0,100..400;1,100..400&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap"
-    rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <link rel="icon" type="image/x-icon" href="./assets/favicon.svg">
 </head>
-
 <body>
 
-  <header>
-    <div class="header-inner">
-      <div onclick="showView('home', this)">
-        <h1>Noeks <span>Reading Log</span></h1>
-      </div>
-      <nav>
-        <button class="active" onclick="showView('home', this)">Home</button>
-        <button onclick="showView('books', this)">Mijn Boeken</button>
-        <button onclick="showView('challenges', this)">Opdrachten</button>
-        <button onclick="showView('manage', this)">Beheer</button>
-      </nav>
-    </div>
-  </header>
+<div class="app">
 
-  <main>
-    <!-- Setup banner -->
-    <div id="setup-banner">
-      <p>
-        <strong>⚙️ Verbinden met Supabase</strong>
-        Vul je gegevens in om op al je apparaten te synchroniseren.
-      </p>
-      <div class="fields">
-        <input type="text" id="sb-url" placeholder="https://xxxx.supabase.co" />
-        <input type="text" id="sb-key" placeholder="je publishable key" />
-        <button class="btn btn-berry btn-sm" onclick="connectSupabase()">Verbinden</button>
-        <button class="btn btn-ghost btn-sm" onclick="dismissSetup()">Offline gebruiken</button>
-      </div>
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-main">Noek's</span>
+      <span class="brand-sub">Reading Log</span>
     </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-view="home" onclick="showView('home')">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>
+        <span>Home</span>
+      </button>
+      <button class="nav-item" data-view="books" onclick="showView('books')">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+        <span>Mijn Boeken</span>
+      </button>
+      <button class="nav-item" data-view="challenges" onclick="showView('challenges')">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M8 21h8m-4-4v4M3 17h18l-1.68-10H4.68L3 17z"/><path d="M5 7V4a1 1 0 011-1h12a1 1 0 011 1v3"/></svg>
+        <span>Opdrachten</span>
+      </button>
+      <button class="nav-item" data-view="manage" onclick="showView('manage')">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        <span>Beheer</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="connection-btn" id="connection-btn" onclick="toggleConnectionPanel()">
+        <span class="conn-dot" id="connection-dot"></span>
+        <span id="connection-label">Verbinding instellen</span>
+      </button>
+    </div>
+  </aside>
 
-    <!-- HOME VIEW -->
-    <div id="view-home" class="view active">
-      <div class="home-hero">
-        <div class="home-hero-text">
-          <h2>Welkom terug! 📖</h2>
-          <p>Volg je leesopdrachten in al je groepen.</p>
+  <div class="mobile-overlay" id="mobile-overlay" onclick="closeMobileNav()"></div>
+
+  <div class="main-wrapper">
+
+    <!-- ── Mobile header ── -->
+    <header class="mobile-header">
+      <button class="hamburger" onclick="toggleMobileNav()" aria-label="Menu">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <span class="mobile-brand">Noek's Reading Log</span>
+      <button class="btn btn-accent btn-sm" onclick="openBookModal()">+ Boek</button>
+    </header>
+
+    <main class="main-content">
+
+      <!-- Connection panel -->
+      <div id="connection-panel" class="connection-panel hidden">
+        <h3>Verbinden met Supabase</h3>
+        <p>Vul je gegevens in om op al je apparaten te synchroniseren.</p>
+        <div class="connection-fields">
+          <input type="text" id="sb-url" placeholder="https://xxxx.supabase.co">
+          <input type="text" id="sb-key" placeholder="Publishable key">
         </div>
-        <button class="btn btn-berry" onclick="openBookModal()">+ Boek toevoegen</button>
-      </div>
-
-      <div class="stats-row" id="home-stats"></div>
-
-      <div class="home-grid">
-        <div class="home-section">
-          <h3 class="section-title">Momenteel aan het lezen</h3>
-          <div id="home-reading-list"></div>
-        </div>
-        <div class="home-section">
-          <h3 class="section-title">Leesgroepen</h3>
-          <div id="home-groups-list"></div>
-        </div>
-      </div>
-
-      <div class="home-section" style="margin-top: 2rem;">
-        <h3 class="section-title">Voortgang opdrachten</h3>
-        <div id="home-challenge-progress"></div>
-      </div>
-    </div>
-
-    <!-- BOOKS VIEW -->
-    <div id="view-books" class="view">
-      <div class="page-header">
-        <h2>Mijn Boeken</h2>
-        <button class="btn btn-berry" onclick="openBookModal()">+ Boek toevoegen</button>
-      </div>
-
-      <div class="filters" id="status-filters">
-        <button class="filter-btn active" onclick="setFilter('status','all',this)">All</button>
-        <button class="filter-btn" onclick="setFilter('status','to-read',this)">Te lezen</button>
-        <button class="filter-btn" onclick="setFilter('status','reading',this)">Aan het lezen</button>
-        <button class="filter-btn" onclick="setFilter('status','done',this)">Gelezen</button>
-        <div class="filter-sep"></div>
-        <span id="group-filters" style="display:flex;gap:.5rem;flex-wrap:wrap;"></span>
-      </div>
-
-      <div class="search-bar">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
-          style="flex-shrink:0;opacity:.5">
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <input type="text" id="book-search-input" placeholder="Zoek op titel of auteur…" oninput="renderBooks()">
-      </div>
-
-      <div class="cards-grid" id="books-grid"></div>
-    </div>
-
-    <!-- CHALLENGES VIEW -->
-    <div id="view-challenges" class="view">
-      <div class="page-header">
-        <h2>Opdrachten</h2>
-      </div>
-      <div id="challenges-content"></div>
-    </div>
-
-    <!-- MANAGE VIEW -->
-    <div id="view-manage" class="view">
-      <div class="page-header">
-        <h2>Beheer</h2>
-      </div>
-      <div class="manage-grid">
-        <div class="manage-section">
-          <h3>Leesgroepen</h3>
-          <div id="groups-list"></div>
-          <button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="openGroupModal()">+ Groep
-            toevoegen</button>
-        </div>
-        <div class="manage-section">
-          <h3>Opdrachten</h3>
-          <div id="challenges-list"></div>
-          <button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="openChallengeModal()">+ Opdracht
-            toevoegen</button>
+        <div class="connection-actions">
+          <button class="btn btn-accent" onclick="connectSupabase()">Verbinden</button>
+          <button class="btn btn-ghost" onclick="dismissSetup()">Offline gebruiken</button>
         </div>
       </div>
-    </div>
-  </main>
 
-  <!-- Book modal -->
-  <div id="book-modal" class="modal-backdrop" style="display:none" onclick="closeModal('book-modal',event)">
-    <div class="modal">
-      <div class="modal-header">
-        <h2 id="book-modal-title">Boek toevoegen</h2>
-        <button class="modal-close" onclick="closeModal('book-modal')">×</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label>Zoek in Open Library</label>
-          <div style="display:flex;gap:.5rem">
-            <input type="text" id="ol-search" placeholder="Titel of auteur…"
-              onkeydown="if(event.key==='Enter')searchOpenLibrary()">
-            <button class="btn btn-ghost btn-sm" onclick="searchOpenLibrary()" id="ol-btn">Zoeken</button>
+      <!-- ── HOME VIEW ── -->
+      <div id="view-home" class="view active">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Welkom terug</h1>
+            <p class="view-subtitle" id="home-date"></p>
           </div>
-          <div id="ol-results"></div>
-        </div>
-        <div class="divider-label">— of handmatig invullen —</div>
-        <input type="hidden" id="book-id">
-        <input type="hidden" id="book-cover-url">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Titel *</label>
-            <input type="text" id="book-title" placeholder="De boektitel">
-          </div>
-          <div class="form-group">
-            <label>Auteur *</label>
-            <input type="text" id="book-author" placeholder="Naam van de auteur">
+          <div class="header-actions">
+            <button class="btn btn-ghost" onclick="openChallengeModal()">+ Opdracht</button>
+            <button class="btn btn-accent" onclick="openBookModal()">+ Boek</button>
           </div>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Jaar</label>
-            <input type="text" id="book-year" placeholder="2024">
-          </div>
-          <div class="form-group">
-            <label>Status</label>
-            <select id="book-status">
-              <option value="to-read">Te lezen</option>
-              <option value="reading">Aan het lezen</option>
-              <option value="done">Gelezen</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Goodreads link</label>
-          <input type="text" id="book-goodreads-url" placeholder="https://www.goodreads.com/book/show/...">
-        </div>
-        <div class="form-group">
-          <label>Koppelen aan opdrachten</label>
-          <div id="challenge-assignments" style="max-height:220px;overflow-y:auto;"></div>
-        </div>
-        <div class="form-footer">
-          <button class="btn btn-ghost" onclick="closeModal('book-modal')">Annuleren</button>
-          <button class="btn btn-berry" onclick="saveBook()">Boek opslaan</button>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Group modal -->
-  <div id="group-modal" class="modal-backdrop" style="display:none" onclick="closeModal('group-modal',event)">
-    <div class="modal" style="max-width:400px">
-      <div class="modal-header">
-        <h2 id="group-modal-title">Groep toevoegen</h2>
-        <button class="modal-close" onclick="closeModal('group-modal')">×</button>
+        <div id="home-dashboard"></div>
       </div>
-      <div class="modal-body">
-        <input type="hidden" id="group-id">
-        <div class="form-group">
-          <label>Groepsnaam *</label>
-          <input type="text" id="group-name" placeholder="bijv. Fanatieke Lezers">
+
+      <!-- ── BOOKS VIEW ── -->
+      <div id="view-books" class="view">
+        <div class="view-header">
+          <h1 class="view-title">Mijn Boeken</h1>
+          <button class="btn btn-accent" onclick="openBookModal()">+ Boek toevoegen</button>
         </div>
-        <div class="form-group">
-          <label>Groepsicoon</label>
-          <div class="icon-upload-row">
-            <div class="icon-preview" id="group-icon-preview">
-              <span class="icon-preview-placeholder">📖</span>
+
+        <div class="toolbar">
+          <div class="search-bar">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="book-search-input" placeholder="Zoek op titel of auteur…" oninput="renderBooks()">
+          </div>
+          <div class="chips-row" id="status-filters">
+            <button class="chip active" onclick="setFilter('status','all',this)">Alle</button>
+            <button class="chip" onclick="setFilter('status','to-read',this)">Te lezen</button>
+            <button class="chip" onclick="setFilter('status','reading',this)">Bezig</button>
+            <button class="chip" onclick="setFilter('status','done',this)">Gelezen</button>
+          </div>
+          <div class="chips-row" id="group-filters"></div>
+        </div>
+
+        <div id="books-grid"></div>
+      </div>
+
+      <!-- ── CHALLENGES VIEW ── -->
+      <div id="view-challenges" class="view">
+        <div class="view-header">
+          <h1 class="view-title">Opdrachten</h1>
+          <button class="btn btn-ghost" onclick="openChallengeModal()">+ Opdracht toevoegen</button>
+        </div>
+        <div id="challenges-content"></div>
+      </div>
+
+      <!-- ── MANAGE VIEW ── -->
+      <div id="view-manage" class="view">
+        <div class="view-header">
+          <h1 class="view-title">Beheer</h1>
+        </div>
+        <div class="manage-grid">
+          <div class="manage-card">
+            <div class="manage-card-header">
+              <h2 class="manage-card-title">Leesgroepen</h2>
+              <button class="btn btn-ghost btn-sm" onclick="openGroupModal()">+ Groep</button>
             </div>
-            <div class="icon-upload-controls">
-              <input type="file" id="group-icon-file" accept="image/*" onchange="previewIcon(this)"
-                style="display:none">
-              <button type="button" class="btn btn-ghost btn-sm"
-                onclick="document.getElementById('group-icon-file').click()">Afbeelding kiezen</button>
-              <span id="group-icon-filename" style="font-size:.78rem;color:var(--ink-faint);margin-left:.5rem"></span>
+            <div id="groups-list"></div>
+          </div>
+          <div class="manage-card">
+            <div class="manage-card-header">
+              <h2 class="manage-card-title">Opdrachten</h2>
+              <button class="btn btn-ghost btn-sm" onclick="openChallengeModal()">+ Opdracht</button>
             </div>
+            <div id="challenges-list"></div>
           </div>
-          <input type="hidden" id="group-icon-url">
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ── Bottom nav (mobile) ── -->
+    <nav class="bottom-nav">
+      <button class="bottom-nav-item active" data-view="home" onclick="showView('home')">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>
+        <span>Home</span>
+      </button>
+      <button class="bottom-nav-item" data-view="books" onclick="showView('books')">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+        <span>Boeken</span>
+      </button>
+      <button class="bottom-nav-item" data-view="challenges" onclick="showView('challenges')">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M8 21h8m-4-4v4M3 17h18l-1.68-10H4.68L3 17z"/><path d="M5 7V4a1 1 0 011-1h12a1 1 0 011 1v3"/></svg>
+        <span>Opdrachten</span>
+      </button>
+      <button class="bottom-nav-item" data-view="manage" onclick="showView('manage')">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        <span>Beheer</span>
+      </button>
+    </nav>
+
+  </div>
+</div>
+
+<!-- ── BOOK MODAL ── -->
+<div id="book-modal" class="modal-backdrop" style="display:none" onclick="closeModal('book-modal',event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="book-modal-title">Boek toevoegen</h2>
+      <button class="modal-close" onclick="closeModal('book-modal')">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Zoek in Open Library</label>
+        <div class="input-row">
+          <input type="text" id="ol-search" placeholder="Titel of auteur…" onkeydown="if(event.key==='Enter')searchOpenLibrary()">
+          <button class="btn btn-ghost btn-sm" onclick="searchOpenLibrary()" id="ol-btn">Zoeken</button>
+        </div>
+        <div id="ol-results"></div>
+      </div>
+      <div class="divider-label">— of handmatig invullen —</div>
+      <input type="hidden" id="book-id">
+      <input type="hidden" id="book-cover-url">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Titel *</label>
+          <input type="text" id="book-title" placeholder="De boektitel">
         </div>
         <div class="form-group">
-          <label>Goodreads URL</label>
-          <input type="text" id="group-url" placeholder="https://www.goodreads.com/group/show/...">
+          <label>Auteur *</label>
+          <input type="text" id="book-author" placeholder="Naam van de auteur">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Jaar</label>
+          <input type="text" id="book-year" placeholder="2024">
         </div>
         <div class="form-group">
-          <label>Omschrijving</label>
-          <input type="text" id="group-desc" placeholder="Optionele beschrijving">
+          <label>Status</label>
+          <select id="book-status">
+            <option value="to-read">Te lezen</option>
+            <option value="reading">Aan het lezen</option>
+            <option value="done">Gelezen</option>
+          </select>
         </div>
-        <div class="form-footer">
-          <button class="btn btn-ghost" onclick="closeModal('group-modal')">Annuleren</button>
-          <button class="btn btn-berry" onclick="saveGroup()">Groep opslaan</button>
-        </div>
+      </div>
+      <div class="form-group">
+        <label>Goodreads link</label>
+        <input type="text" id="book-goodreads-url" placeholder="https://www.goodreads.com/book/show/...">
+      </div>
+      <div class="form-group">
+        <label>Koppelen aan opdrachten</label>
+        <div id="challenge-assignments" style="max-height:220px;overflow-y:auto;"></div>
       </div>
     </div>
-  </div>
-
-  <!-- Challenge modal -->
-  <div id="challenge-modal" class="modal-backdrop" style="display:none" onclick="closeModal('challenge-modal',event)">
-    <div class="modal" style="max-width:440px">
-      <div class="modal-header">
-        <h2 id="challenge-modal-title">Opdracht toevoegen</h2>
-        <button class="modal-close" onclick="closeModal('challenge-modal')">×</button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="challenge-id">
-        <div class="form-group">
-          <label>Groep *</label>
-          <select id="challenge-group"></select>
-        </div>
-        <div class="form-group">
-          <label>Opdrachtnaam *</label>
-          <input type="text" id="challenge-name" placeholder="bijv. Een boek dat zich afspeelt in Azië">
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Periode</label>
-            <input type="text" id="challenge-period" placeholder="bijv. Januari, Het hele jaar">
-          </div>
-          <div class="form-group">
-            <label>Deadline</label>
-            <input type="date" id="challenge-deadline">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Punten</label>
-            <input type="number" id="challenge-points" placeholder="bijv. 15" min="0">
-          </div>
-          <div class="form-group">
-            <label>Bonuspunten</label>
-            <input type="number" id="challenge-bonus" placeholder="bijv. 5" min="0">
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Goodreads link</label>
-          <input type="text" id="challenge-goodreads-url" placeholder="https://www.goodreads.com/topic/show/...">
-        </div>
-        <div class="form-group">
-          <label>Omschrijving / voorwaarden</label>
-          <textarea id="challenge-desc" placeholder="Details over deze opdracht…" style="min-height:170px"></textarea>
-        </div>
-        <div class="form-footer">
-          <button class="btn btn-ghost" onclick="closeModal('challenge-modal')">Annuleren</button>
-          <button class="btn btn-berry" onclick="saveChallenge()">Opdracht opslaan</button>
-        </div>
-      </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('book-modal')">Annuleren</button>
+      <button class="btn btn-accent" onclick="saveBook()">Boek opslaan</button>
     </div>
   </div>
+</div>
 
-  <div id="toast"></div>
+<!-- ── GROUP MODAL ── -->
+<div id="group-modal" class="modal-backdrop" style="display:none" onclick="closeModal('group-modal',event)">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <h2 class="modal-title" id="group-modal-title">Groep toevoegen</h2>
+      <button class="modal-close" onclick="closeModal('group-modal')">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="group-id">
+      <div class="form-group">
+        <label>Groepsnaam *</label>
+        <input type="text" id="group-name" placeholder="bijv. Fanatieke Lezers">
+      </div>
+      <div class="form-group">
+        <label>Groepsicoon</label>
+        <div class="icon-upload-row">
+          <div class="icon-preview" id="group-icon-preview">
+            <span class="icon-preview-placeholder">📖</span>
+          </div>
+          <div class="icon-upload-controls">
+            <input type="file" id="group-icon-file" accept="image/*" onchange="previewIcon(this)" style="display:none">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('group-icon-file').click()">Afbeelding kiezen</button>
+            <span id="group-icon-filename" style="font-size:.78rem;color:var(--text-3);margin-left:.5rem"></span>
+          </div>
+        </div>
+        <input type="hidden" id="group-icon-url">
+      </div>
+      <div class="form-group">
+        <label>Goodreads URL</label>
+        <input type="text" id="group-url" placeholder="https://www.goodreads.com/group/show/...">
+      </div>
+      <div class="form-group">
+        <label>Omschrijving</label>
+        <input type="text" id="group-desc" placeholder="Optionele beschrijving">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('group-modal')">Annuleren</button>
+      <button class="btn btn-accent" onclick="saveGroup()">Groep opslaan</button>
+    </div>
+  </div>
+</div>
 
-  <!-- Group popup -->
-  <div id="group-popup" onclick="if(event.target===this)closeGroupPopup()"></div>
+<!-- ── CHALLENGE MODAL ── -->
+<div id="challenge-modal" class="modal-backdrop" style="display:none" onclick="closeModal('challenge-modal',event)">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <h2 class="modal-title" id="challenge-modal-title">Opdracht toevoegen</h2>
+      <button class="modal-close" onclick="closeModal('challenge-modal')">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="challenge-id">
+      <div class="form-group">
+        <label>Groep *</label>
+        <select id="challenge-group"></select>
+      </div>
+      <div class="form-group">
+        <label>Opdrachtnaam *</label>
+        <input type="text" id="challenge-name" placeholder="bijv. Een boek dat zich afspeelt in Azië">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Periode</label>
+          <input type="text" id="challenge-period" placeholder="bijv. Januari">
+        </div>
+        <div class="form-group">
+          <label>Deadline</label>
+          <input type="date" id="challenge-deadline">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Aantal boeken vereist</label>
+          <input type="number" id="challenge-books-required" placeholder="bijv. 5" min="1">
+        </div>
+        <div class="form-group">
+          <label>Punten</label>
+          <input type="number" id="challenge-points" placeholder="bijv. 15" min="0">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Bonuspunten</label>
+          <input type="number" id="challenge-bonus" placeholder="bijv. 5" min="0">
+        </div>
+        <div class="form-group"></div>
+      </div>
+      <div class="form-group">
+        <label>Goodreads link</label>
+        <input type="text" id="challenge-goodreads-url" placeholder="https://www.goodreads.com/topic/show/...">
+      </div>
+      <div class="form-group">
+        <label>Omschrijving / voorwaarden</label>
+        <textarea id="challenge-desc" placeholder="Details over deze opdracht…" style="min-height:120px"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('challenge-modal')">Annuleren</button>
+      <button class="btn btn-accent" onclick="saveChallenge()">Opdracht opslaan</button>
+    </div>
+  </div>
+</div>
 
-  <!-- Challenge detail popup -->
-  <div id="challenge-detail-popup" onclick="if(event.target===this)closeChallengeDetailPopup()"></div>
+<!-- ── POPUPS ── -->
+<div id="group-popup" onclick="if(event.target===this)closeGroupPopup()"></div>
+<div id="challenge-detail-popup" onclick="if(event.target===this)closeChallengeDetailPopup()"></div>
 
-  <script src="app.js"></script>
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="animations.js"></script>
+<script src="app.js"></script>
 </body>
-
 </html>

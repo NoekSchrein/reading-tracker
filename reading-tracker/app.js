@@ -7,10 +7,7 @@ let assignments = [];
 let filters = { status: 'all', group: 'all' };
 let editingBookId = null;
 
-// Goodreads group links — update these if needed
-const GOODREADS_GROUPS = [
-
-];
+const GOODREADS_GROUPS = [];
 
 // ── Supabase ──
 function connectSupabase() {
@@ -21,7 +18,8 @@ function connectSupabase() {
     db = supabase.createClient(url, key);
     localStorage.setItem('sb_url', url);
     localStorage.setItem('sb_key', key);
-    document.getElementById('setup-banner').style.display = 'none';
+    document.getElementById('connection-panel').classList.add('hidden');
+    updateConnectionStatus(true);
     toast('Verbonden! Gegevens worden geladen…');
     loadAll();
   } catch(e) {
@@ -30,7 +28,7 @@ function connectSupabase() {
 }
 
 function dismissSetup() {
-  document.getElementById('setup-banner').style.display = 'none';
+  document.getElementById('connection-panel').classList.add('hidden');
   toast('Offline modus — gegevens lokaal opgeslagen');
 }
 
@@ -73,15 +71,44 @@ function handleDbError(err) {
 }
 
 // ── Views ──
-function showView(name, btn) {
+function showView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === name));
   document.getElementById('view-' + name).classList.add('active');
-  if (btn) btn.classList.add('active');
+  closeMobileNav();
   if (name === 'home') renderHome();
   if (name === 'challenges') renderChallengesView();
   if (name === 'manage') renderManageView();
   if (name === 'books') { renderGroupFilters(); renderBooks(); }
+  animateView(name);
+}
+
+// ── Mobile nav ──
+function toggleMobileNav() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('mobile-overlay').classList.toggle('open');
+}
+
+function closeMobileNav() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('mobile-overlay').classList.remove('open');
+}
+
+// ── Connection panel ──
+function toggleConnectionPanel() {
+  document.getElementById('connection-panel').classList.toggle('hidden');
+}
+
+function updateConnectionStatus(connected) {
+  const dot = document.getElementById('connection-dot');
+  const label = document.getElementById('connection-label');
+  if (connected) {
+    dot.className = 'conn-dot connected';
+    label.textContent = 'Verbonden met Supabase';
+  } else {
+    dot.className = 'conn-dot offline';
+    label.textContent = 'Verbinding instellen';
+  }
 }
 
 // ── Render all ──
@@ -95,165 +122,237 @@ function renderAll() {
 
 // ── Home view ──
 function renderHome() {
-  // Stats
-  const toRead = books.filter(b => b.status === 'to-read').length;
-  const reading = books.filter(b => b.status === 'reading').length;
-  const done = books.filter(b => b.status === 'done').length;
-  document.getElementById('home-stats').innerHTML = `
-    <div class="stat-card"><div class="num">${books.length}</div><div class="lbl">Totaal boeken</div></div>
-    <div class="stat-card"><div class="num" style="color:var(--berry)">${reading}</div><div class="lbl">Aan het lezen</div></div>
-    <div class="stat-card"><div class="num" style="color:var(--bordeaux)">${toRead}</div><div class="lbl">Te lezen</div></div>
-    <div class="stat-card"><div class="num" style="color:var(--berry)">${done}</div><div class="lbl">Klaar</div></div>
-    <div class="stat-card"><div class="num">${challenges.length}</div><div class="lbl">Opdrachten</div></div>
-  `;
-
-  // Currently reading
-  const reading_books = books.filter(b => b.status === 'reading');
-  const rl = document.getElementById('home-reading-list');
-  if (reading_books.length === 0) {
-    rl.innerHTML = '<p style="font-size:.85rem;color:var(--ink-faint);padding:.5rem 0">Nog geen boeken aan het lezen</p>';
-  } else {
-    rl.innerHTML = reading_books.map(b => {
-      const cover = b.cover_url
-        ? `<div class="mini-cover"><img src="${b.cover_url}" alt=""></div>`
-        : `<div class="mini-cover">📖</div>`;
-      const bookChallengeNames = assignments
-        .filter(a => a.book_id === b.id)
-        .map(a => challenges.find(c => c.id === a.challenge_id))
-        .filter(Boolean)
-        .map(c => `<span class="mini-challenge-tag">${esc(c.name)}</span>`)
-        .join('');
-      return `<div class="mini-book-row">
-        ${cover}
-        <div class="mini-info">
-          <strong>${esc(b.title)}</strong>
-          <small>${esc(b.author)}</small>
-          ${bookChallengeNames ? `<div class="mini-challenge-tags">${bookChallengeNames}</div>` : ''}
-        </div>
-        ${b.goodreads_url ? `<a href="${b.goodreads_url}" target="_blank" rel="noopener" class="btn btn-goodreads btn-sm">↗</a>` : ''}
-        <button class="btn btn-ghost btn-sm" onclick="quickStatus('${b.id}','done')">✓ Klaar</button>
-      </div>`;
-    }).join('');
+  // Date
+  const dateEl = document.getElementById('home-date');
+  if (dateEl) {
+    dateEl.textContent = new Date().toLocaleDateString('nl-NL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   }
 
-  // Goodreads group links
-  const gl = document.getElementById('home-groups-list');
-  const groupCards = GOODREADS_GROUPS.map(g => `
-    <a href="${g.url}" target="_blank" rel="noopener" class="group-link-card">
-      <div class="group-link-icon" style="background:var(--berry);display:flex;align-items:center;justify-content:center;font-size:1.1rem;">📚</div>
-      <div class="group-link-info">
-        <strong>${esc(g.name)}</strong>
-        <small>Open in Goodreads ↗</small>
-      </div>
-    </a>`).join('');
+  animateHero();
 
-  const localGroupLinks = groups.map(g => `
-    <div class="group-link-card" onclick="openGroupPopup('${g.id}')" style="cursor:pointer">
-      ${g.icon_url
-        ? `<img class="group-link-icon" src="${esc(g.icon_url)}" alt="${esc(g.name)}">`
-        : `<div class="group-link-icon" style="background:var(--berry);display:flex;align-items:center;justify-content:center;font-size:1.1rem;">📚</div>`
-      }
-      <div class="group-link-info">
-        <strong>${esc(g.name)}</strong>
-        <small>${challenges.filter(c => c.group_id === g.id).length} lopende opdrachten</small>
-      </div>
-      <span style="color:var(--blush);font-size:1rem">›</span>
-    </div>`).join('');
-
-  gl.innerHTML = groupCards + localGroupLinks;
-
-  // Challenge progress
-  const cp = document.getElementById('home-challenge-progress');
+  const dash = document.getElementById('home-dashboard');
   if (challenges.length === 0) {
-    cp.innerHTML = '<p style="font-size:.85rem;color:var(--ink-faint)">Nog geen opdrachten - ga naar beheer om er een toe te voegen</p>';
+    dash.innerHTML = `
+      <div class="dash-empty">
+        <div class="dash-empty-icon">📚</div>
+        <p>Nog geen opdrachten.</p>
+        <p style="margin-top:.35rem">Ga naar <strong>Beheer</strong> om je leesgroepen en opdrachten toe te voegen.</p>
+      </div>`;
     return;
   }
 
-  // Sort controls
-  const currentSort = window._challengeSort || 'deadline';
-  const sortOptions = [
-    { val: 'deadline', lbl: '📅 Deadline' },
-    { val: 'started', lbl: '▶ Gestart' },
-    { val: 'progress', lbl: '📊 Voortgang' },
-    { val: 'group', lbl: '👥 Groep' },
-  ];
+  // ── Build data per challenge ──
+  function chalData(c) {
+    const g = groups.find(gr => gr.id === c.group_id);
+    const cAssignments = assignments.filter(a => a.challenge_id === c.id);
+    const cBooks = cAssignments.map(a => {
+      const bk = books.find(b => b.id === a.book_id);
+      return bk ? { book: bk, note: a.note } : null;
+    }).filter(Boolean);
+    const doneCount    = cBooks.filter(x => x.book.status === 'done').length;
+    const readingCount = cBooks.filter(x => x.book.status === 'reading').length;
+    const total        = cBooks.length;
+    const isComplete   = total > 0 && doneCount === total;
+    const isActive     = readingCount > 0;
+    const needsBook    = total === 0;
+    const notStarted   = total > 0 && readingCount === 0 && !isComplete;
 
-  let sortedChallenges = [...challenges];
-  if (currentSort === 'deadline') {
-    sortedChallenges.sort((a, b) => {
-      if (!a.deadline && !b.deadline) return 0;
-      if (!a.deadline) return 1;
-      if (!b.deadline) return -1;
-      return new Date(a.deadline) - new Date(b.deadline);
-    });
-  } else if (currentSort === 'started') {
-    sortedChallenges.sort((a, b) => {
-      const aStarted = assignments.some(x => x.challenge_id === a.id && books.find(bk => bk.id === x.book_id && bk.status === 'reading'));
-      const bStarted = assignments.some(x => x.challenge_id === b.id && books.find(bk => bk.id === x.book_id && bk.status === 'reading'));
-      return (bStarted ? 1 : 0) - (aStarted ? 1 : 0);
-    });
-  } else if (currentSort === 'progress') {
-    sortedChallenges.sort((a, b) => {
-      const getPct = c => {
-        const cBooks = assignments.filter(x => x.challenge_id === c.id).map(x => books.find(bk => bk.id === x.book_id)).filter(Boolean);
-        return cBooks.length === 0 ? 0 : cBooks.filter(bk => bk.status === 'done').length / cBooks.length;
-      };
-      return getPct(b) - getPct(a);
-    });
-  } else if (currentSort === 'group') {
-    sortedChallenges.sort((a, b) => {
-      const gA = (groups.find(gr => gr.id === a.group_id)?.name || '').toLowerCase();
-      const gB = (groups.find(gr => gr.id === b.group_id)?.name || '').toLowerCase();
-      return gA.localeCompare(gB);
-    });
+    let daysLeft = null;
+    let urgency  = '';
+    if (c.deadline && !isComplete) {
+      daysLeft = Math.ceil((new Date(c.deadline) - new Date()) / (1000 * 60 * 60 * 24));
+      if (daysLeft < 0)       urgency = 'overdue';
+      else if (daysLeft <= 7) urgency = 'critical';
+      else if (daysLeft <= 30) urgency = 'soon';
+    }
+
+    const booksRequired = c.books_required || null;
+    const missing = booksRequired !== null ? Math.max(0, booksRequired - total) : null;
+
+    return { g, cBooks, doneCount, total, isComplete, isActive, needsBook, notStarted, daysLeft, urgency, booksRequired, missing };
   }
 
-  cp.innerHTML = `
-    <div class="challenge-sort-bar">
-      <span class="challenge-sort-label">Sorteren op:</span>
-      ${sortOptions.map(o => `<button class="sort-btn ${currentSort === o.val ? 'active' : ''}" onclick="setChallengeSort('${o.val}')">${o.lbl}</button>`).join('')}
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.75rem">` +
-    sortedChallenges.map(c => {
-      const g = groups.find(gr => gr.id === c.group_id);
-      const cBooks = assignments.filter(a => a.challenge_id === c.id).map(a => books.find(b => b.id === a.book_id)).filter(Boolean);
-      const done = cBooks.filter(b => b.status === 'done').length;
-      const total = cBooks.length;
-      const pct = total === 0 ? 0 : Math.round((done / total) * 100);
-      const isComplete = total > 0 && done === total;
+  // ── Render a single challenge card ──
+  function renderChalCard(c) {
+    const { g, cBooks, doneCount, total, isComplete, needsBook, daysLeft, urgency, booksRequired, missing } = chalData(c);
+    const denominator = booksRequired || total;
+    const pct = denominator === 0 ? 0 : Math.round((doneCount / denominator) * 100);
+    const fractionLabel = booksRequired ? `${doneCount}/${booksRequired}` : `${doneCount}/${total}`;
 
-      // Deadline urgency
-      let daysLeft = null;
-      let urgencyClass = '';
-      let urgencyBanner = '';
-      if (c.deadline && !isComplete) {
-        daysLeft = Math.ceil((new Date(c.deadline) - new Date()) / (1000 * 60 * 60 * 24));
-        if (daysLeft < 0) {
-          urgencyClass = 'deadline-overdue';
-          urgencyBanner = `<div class="deadline-banner overdue">⚠️ Deadline verstreken (${Math.abs(daysLeft)} dag${Math.abs(daysLeft) !== 1 ? 'en' : ''} geleden)</div>`;
-        } else if (daysLeft <= 7) {
-          urgencyClass = 'deadline-critical';
-          urgencyBanner = `<div class="deadline-banner critical">🔥 Nog ${daysLeft} dag${daysLeft !== 1 ? 'en' : ''}!</div>`;
-        } else if (daysLeft <= 30) {
-          urgencyClass = 'deadline-soon';
-          urgencyBanner = `<div class="deadline-banner soon">⏰ Nog ${daysLeft} dagen</div>`;
-        }
-      }
+    // Deadline pill — no emojis, CSS color does the work
+    let deadlinePill = '';
+    if (c.deadline && !isComplete) {
+      const label = daysLeft < 0
+        ? `${Math.abs(daysLeft)}d te laat`
+        : daysLeft === 0 ? 'Vandaag'
+        : daysLeft <= 7 ? `nog ${daysLeft}d`
+        : new Date(c.deadline).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+      const cls = urgency === 'overdue' ? 'dl-overdue' : urgency === 'critical' ? 'dl-critical' : urgency === 'soon' ? 'dl-soon' : 'dl-normal';
+      deadlinePill = `<span class="chal-deadline-pill ${cls}">${label}</span>`;
+    } else if (isComplete && c.deadline) {
+      deadlinePill = `<span class="chal-deadline-pill dl-done">Klaar</span>`;
+    }
 
-      const deadlineLabel = c.deadline ? new Date(c.deadline).toLocaleDateString('nl-NL',{day:'numeric',month:'short'}) : null;
+    // Meta line: group · period · points
+    const metaParts = [];
+    if (g) metaParts.push(esc(g.name));
+    if (c.period) metaParts.push(esc(c.period));
+    if (c.points) metaParts.push(`${c.points} pts`);
+    const metaHtml = metaParts.length
+      ? `<div class="chal-header-meta">${metaParts.join('<span class="chal-meta-sep">·</span>')}</div>`
+      : '';
 
-      return `<div class="challenge-progress-row ${urgencyClass}" onclick="openChallengeDetailPopup('${c.id}')" style="cursor:pointer">
-        ${urgencyBanner}
-        <div class="challenge-progress-header">
-          <span class="challenge-progress-name">${esc(c.name)}</span>
-          <span class="challenge-progress-count">${done}/${total} gelezen</span>
+    // Sort books: reading first, then to-read, then done
+    const sortedBooks = [...cBooks].sort((a, b) => {
+      const order = { reading: 0, 'to-read': 1, done: 2 };
+      return (order[a.book.status] ?? 3) - (order[b.book.status] ?? 3);
+    });
+
+    // Book rows — status dot + title + author + action only
+    const bookRows = sortedBooks.map(({ book: b, note }) => {
+      const dotCls = b.status === 'done' ? 'dot-done' : b.status === 'reading' ? 'dot-reading' : 'dot-to-read';
+      const rowCls = b.status === 'done' ? ' is-done' : b.status === 'reading' ? ' is-reading' : '';
+      const actionBtn = b.status === 'reading'
+        ? `<button class="btn btn-accent btn-sm" onclick="event.stopPropagation();quickStatus('${b.id}','done')">Klaar</button>`
+        : b.status === 'to-read'
+          ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();quickStatus('${b.id}','reading')">Start</button>`
+          : '';
+      const grLink = b.goodreads_url
+        ? `<a href="${b.goodreads_url}" target="_blank" rel="noopener" class="chal-gr-link" onclick="event.stopPropagation()" title="Goodreads">↗</a>`
+        : '';
+      const noteHtml = note ? `<span class="chal-book-note">${esc(note)}</span>` : '';
+      return `<div class="chal-book-row${rowCls}">
+        <span class="chal-status-dot ${dotCls}"></span>
+        <div class="chal-book-info">
+          <strong>${esc(b.title)}</strong>
+          <span>${esc(b.author)}${noteHtml ? ' — ' : ''}${noteHtml}</span>
         </div>
-        <div class="progress-bar-bg">
-          <div class="progress-bar-fill" style="width:${pct}%"></div>
-        </div>
-        <div class="challenge-progress-group">${g ? esc(g.name) : ''}${c.period ? ' · ' + c.period : ''}${c.points ? ' · <strong>' + c.points + ' pts</strong>' : ''}${deadlineLabel ? ' · deadline <strong>' + deadlineLabel + '</strong>' : ''}</div>
+        <div class="chal-book-actions">${actionBtn}${grLink}</div>
       </div>`;
-    }).join('') + `</div>`;
+    }).join('');
+
+    const addBookBtn = !isComplete
+      ? `<button class="chal-add-book" onclick="event.stopPropagation();openBookForChallenge('${c.id}')" title="Boek toevoegen aan deze opdracht">
+           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+             <path d="M1 1.5h5v10H1z"/>
+             <path d="M6 2.5c.6-.7 1.6-1 2.5-1s2 .4 2 .4v8.5s-.9-.4-2-.4-2.5.7-2.5.7V2.5Z"/>
+             <line x1="10" y1="8" x2="10" y2="13"/>
+             <line x1="7.5" y1="10.5" x2="12.5" y2="10.5"/>
+           </svg>
+         </button>`
+      : '';
+
+    const cardClass = isComplete ? 'chal-card done' : urgency ? `chal-card ${urgency}` : 'chal-card';
+
+    return `<div class="${cardClass}">
+      <div class="chal-card-header" onclick="openChallengeDetailPopup('${c.id}')">
+        <div class="chal-header-top">
+          <span class="chal-card-name">${esc(c.name)}</span>
+          ${deadlinePill}
+        </div>
+        ${metaHtml}
+        ${denominator > 0 ? `
+          <div class="chal-card-progress">
+            <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
+            <span class="chal-card-fraction">${fractionLabel}</span>
+          </div>` : ''}
+      </div>
+      <div class="chal-card-books">
+        ${missing > 0 ? `<div class="chal-missing-row"><span class="chal-missing-pill">${missing} boek${missing !== 1 ? 'en' : ''} nog te zoeken</span></div>` : ''}
+        ${bookRows || '<p class="chal-no-books">Geen boeken toegewezen</p>'}
+        ${addBookBtn}
+      </div>
+    </div>`;
+  }
+
+  // ── Sort challenges: urgent first, then active, then not-started, then needs-book, then done ──
+  function priority(c) {
+    const d = chalData(c);
+    if (d.isComplete) return 5;
+    if (d.urgency === 'overdue')  return 0;
+    if (d.urgency === 'critical') return 1;
+    if (d.isActive) return 2;
+    if (d.notStarted) return 3;
+    if (d.needsBook) return 4;
+    if (d.urgency === 'soon') return 2;
+    return 3;
+  }
+
+  const sorted = [...challenges].sort((a, b) => {
+    const pa = priority(a), pb = priority(b);
+    if (pa !== pb) return pa - pb;
+    // Secondary: deadline
+    if (a.deadline && b.deadline) return new Date(a.deadline) - new Date(b.deadline);
+    if (a.deadline) return -1;
+    if (b.deadline) return 1;
+    return 0;
+  });
+
+  // ── Section definitions ──
+  const sections = [
+    {
+      id: 'urgent',
+      title: 'Urgent',
+      icon: '🔥',
+      filter: c => { const d = chalData(c); return !d.isComplete && (d.urgency === 'overdue' || d.urgency === 'critical'); }
+    },
+    {
+      id: 'active',
+      title: 'Actief',
+      icon: '📖',
+      filter: c => { const d = chalData(c); return !d.isComplete && d.isActive && d.urgency !== 'overdue' && d.urgency !== 'critical'; }
+    },
+    {
+      id: 'not-started',
+      title: 'Nog te starten',
+      icon: '⏳',
+      filter: c => { const d = chalData(c); return !d.isComplete && d.notStarted && !d.needsBook && d.urgency !== 'overdue' && d.urgency !== 'critical'; }
+    },
+    {
+      id: 'needs-book',
+      title: 'Boek nog te kiezen',
+      icon: '❓',
+      filter: c => { const d = chalData(c); return !d.isComplete && d.needsBook; }
+    },
+    {
+      id: 'done',
+      title: 'Afgerond',
+      icon: '✅',
+      filter: c => chalData(c).isComplete
+    },
+  ];
+
+  let html = '';
+  for (const sec of sections) {
+    const items = sorted.filter(sec.filter);
+    if (items.length === 0) continue;
+    const isCollapsed = sec.id === 'done';
+    html += `<div class="dash-section ${isCollapsed ? 'dash-section--collapsible' : ''}">
+      <div class="dash-section-header" ${isCollapsed ? `onclick="this.parentElement.classList.toggle('open')"` : ''}>
+        <span class="dash-section-icon">${sec.icon}</span>
+        <span class="dash-section-title">${sec.title}</span>
+        <span class="dash-section-count">${items.length}</span>
+        ${isCollapsed ? '<span class="dash-section-chevron">›</span>' : ''}
+      </div>
+      <div class="dash-section-body dash-grid">
+        ${items.map(c => renderChalCard(c)).join('')}
+      </div>
+    </div>`;
+  }
+
+  dash.innerHTML = html;
+  animateHomeRows();
+  animateProgressBars(dash);
+}
+
+// Open book modal pre-linked to a specific challenge
+function openBookForChallenge(challengeId) {
+  openBookModal();
+  // After modal opens, pre-check the challenge checkbox
+  setTimeout(() => {
+    const cb = document.querySelector(`#challenge-assignments input[value="${challengeId}"]`);
+    if (cb) { cb.checked = true; toggleAssignmentNote(cb); }
+  }, 50);
 }
 
 // ── Books view ──
@@ -262,21 +361,31 @@ function renderGroupFilters() {
   if (!cont) return;
   cont.innerHTML = '';
   if (groups.length === 0) return;
-  groups.forEach(g => {
+
+  const makeChip = (text, val) => {
     const btn = document.createElement('button');
-    btn.className = 'filter-btn' + (filters.group === g.id ? ' active' : '');
-    btn.textContent = g.name;
-    btn.onclick = function() { setFilter('group', g.id, this); };
+    btn.className = 'chip' + (filters.group === val ? ' active' : '');
+    btn.textContent = text;
+    btn.dataset.groupVal = val;
+    btn.onclick = function() {
+      // clicking the active group chip toggles it off
+      const newVal = (val !== 'all' && filters.group === val) ? 'all' : val;
+      const target = newVal === 'all' ? cont.querySelector('[data-group-val="all"]') : this;
+      setFilter('group', newVal, target);
+    };
     cont.appendChild(btn);
-  });
+  };
+
+  makeChip('Alle', 'all');
+  groups.forEach(g => makeChip(g.name, g.id));
 }
 
 function setFilter(key, val, btn) {
   filters[key] = val;
   if (key === 'status') {
-    document.querySelectorAll('#status-filters > .filter-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#status-filters > .chip').forEach(b => b.classList.remove('active'));
   } else {
-    document.querySelectorAll('#group-filters .filter-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#group-filters .chip').forEach(b => b.classList.remove('active'));
   }
   btn.classList.add('active');
   renderBooks();
@@ -293,8 +402,8 @@ function renderBooks() {
     }
     if (query) {
       const t = (b.title || '').toLowerCase();
-      const a = (b.author || '').toLowerCase();
-      if (!t.includes(query) && !a.includes(query)) return false;
+      const au = (b.author || '').toLowerCase();
+      if (!t.includes(query) && !au.includes(query)) return false;
     }
     return true;
   });
@@ -302,38 +411,60 @@ function renderBooks() {
   const grid = document.getElementById('books-grid');
   if (!grid) return;
   if (filtered.length === 0) {
-    grid.innerHTML = `<div class="empty"><div class="icon">📚</div><p>Geen boeken gevonden.</p></div>`;
+    grid.innerHTML = `<div class="empty"><span class="icon">📚</span><p>Geen boeken gevonden.</p></div>`;
     return;
   }
-  grid.innerHTML = filtered.map(b => {
-    const bookAssignments = assignments.filter(a => a.book_id === b.id);
-    const bookChallenges = bookAssignments.map(a => challenges.find(c => c.id === a.challenge_id)).filter(Boolean);
-    const tags = bookChallenges.map(c => `<span class="challenge-tag" title="${esc(c.name)}">${esc(c.name)}</span>`).join('');
-    const note = bookAssignments.find(a => a.note)?.note || '';
-    const statusLabel = b.status === 'to-read' ? 'Te lezen' : b.status === 'reading' ? 'Aan het lezen' : 'Gelezen';
-    const cover = b.cover_url
-      ? `<img src="${b.cover_url}" alt="Cover" loading="lazy">`
-      : `<div class="no-cover">📖</div>`;
-    return `
-      <div class="card book-card">
-        <div class="book-card-cover">
-          ${cover}
-          <span class="status-badge ${b.status}">${statusLabel}</span>
-        </div>
-        <div class="book-card-body">
-          <h3>${esc(b.title)}</h3>
-          <div class="author">${esc(b.author)}${b.year ? ' · ' + b.year : ''}</div>
-          ${tags ? `<div class="challenge-tags">${tags}</div>` : ''}
-          ${note ? `<div class="book-note">"${esc(note)}"</div>` : ''}
-          <div class="book-card-actions">
-            <button class="btn btn-ghost btn-sm" onclick="editBook('${b.id}')">Bewerken</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteBook('${b.id}')">Verwijderen</button>
-            ${b.goodreads_url ? `<a href="${b.goodreads_url}" target="_blank" rel="noopener" class="btn btn-goodreads btn-sm" style="margin-left:auto">Goodreads ↗</a>` : ''}
-            ${b.status !== 'done' ? `<button class="btn btn-blush btn-sm" ${!b.goodreads_url ? 'style="margin-left:auto"' : ''} onclick="quickStatus('${b.id}','${b.status === 'to-read' ? 'reading' : 'done'}')">${b.status === 'to-read' ? '▶ Start' : '✓ Klaar'}</button>` : ''}
+
+  const statusGroups = [
+    { key: 'reading',  label: 'Bezig',    dotCls: 'dot-reading' },
+    { key: 'to-read',  label: 'Te lezen', dotCls: 'dot-to-read' },
+    { key: 'done',     label: 'Gelezen',  dotCls: 'dot-done', collapsible: true },
+  ];
+
+  grid.innerHTML = statusGroups
+    .map(sg => ({ ...sg, items: filtered.filter(b => b.status === sg.key) }))
+    .filter(sg => sg.items.length > 0)
+    .map(sg => {
+      const rows = sg.items.map(b => {
+        const bookAssignments = assignments.filter(a => a.book_id === b.id);
+        const bookChallenges = bookAssignments.map(a => challenges.find(c => c.id === a.challenge_id)).filter(Boolean);
+        const tags = bookChallenges.map(c => `<span class="challenge-tag">${esc(c.name)}</span>`).join('');
+        const cover = b.cover_url
+          ? `<img src="${b.cover_url}" alt="" loading="lazy">`
+          : `<div class="bk-no-cover"></div>`;
+        const quickBtn = b.status === 'reading'
+          ? `<button class="btn btn-accent btn-sm" onclick="quickStatus('${b.id}','done')">Klaar</button>`
+          : b.status === 'to-read'
+            ? `<button class="btn btn-ghost btn-sm" onclick="quickStatus('${b.id}','reading')">Start</button>`
+            : '';
+        return `<div class="bk-row">
+          <div class="bk-cover">${cover}</div>
+          <div class="bk-info">
+            <div class="bk-title">${esc(b.title)}</div>
+            <div class="bk-author">${esc(b.author)}${b.year ? ' · ' + b.year : ''}</div>
+            ${tags ? `<div class="bk-tags">${tags}</div>` : ''}
           </div>
+          <div class="bk-actions">
+            ${quickBtn}
+            ${b.goodreads_url ? `<a href="${b.goodreads_url}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm chal-gr-link" title="Goodreads">↗</a>` : ''}
+            <button class="btn btn-ghost btn-sm" onclick="editBook('${b.id}')">Bewerken</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteBook('${b.id}')">×</button>
+          </div>
+        </div>`;
+      }).join('');
+
+      return `<div class="bk-section${sg.collapsible ? ' bk-section--collapsible' : ''}">
+        <div class="bk-section-header"${sg.collapsible ? ` onclick="this.parentElement.classList.toggle('open')"` : ''}>
+          <span class="chal-status-dot ${sg.dotCls}"></span>
+          <span class="bk-section-title">${sg.label}</span>
+          <span class="bk-section-count">${sg.items.length}</span>
+          ${sg.collapsible ? '<span class="bk-chevron">›</span>' : ''}
         </div>
+        <div class="bk-list">${rows}</div>
       </div>`;
-  }).join('');
+    }).join('');
+
+  animateBookCards();
 }
 
 // ── Challenges view ──
@@ -341,64 +472,79 @@ function renderChallengesView() {
   const cont = document.getElementById('challenges-content');
   if (!cont) return;
   if (groups.length === 0) {
-    cont.innerHTML = `<div class="empty"><div class="icon">🏆</div><p>Nog geen groepen. Ga naar <strong>Beheer</strong> om je leesgroepen en opdrachten toe te voegen.</p></div>`;
+    cont.innerHTML = `<div class="empty"><span class="icon">🏆</span><p>Nog geen groepen. Ga naar <strong>Beheer</strong> om je leesgroepen toe te voegen.</p></div>`;
     return;
   }
   cont.innerHTML = groups.map(g => {
     const gChallenges = challenges.filter(c => c.group_id === g.id);
+    const totalBooks = gChallenges.reduce((sum, c) => sum + assignments.filter(a => a.challenge_id === c.id).length, 0);
+
     const rows = gChallenges.map(c => {
       const cAssignments = assignments.filter(a => a.challenge_id === c.id);
       const cBooks = cAssignments.map(a => books.find(b => b.id === a.book_id)).filter(Boolean);
-      const bookRows = cBooks.map(b => {
-        const note = cAssignments.find(a => a.book_id === b.id)?.note || '';
-        const cover = b.cover_url ? `<img src="${b.cover_url}" alt="" loading="lazy">` : `<div class="no-img">📖</div>`;
-        return `<div class="challenge-book-row">
-          <div class="challenge-book-cover">${cover}</div>
-          <div class="challenge-book-info">
-            <strong>${esc(b.title)}</strong>
-            <small>${esc(b.author)}</small>
-          </div>
-          <span class="status-badge ${b.status}" style="font-size:.68rem">${b.status === 'to-read' ? 'Te lezen' : b.status === 'reading' ? 'Aan het lezen' : 'Gelezen'}</span>
-          ${note ? `<div class="challenge-book-note" title="${esc(note)}">${esc(note)}</div>` : ''}
-        </div>`;
-      }).join('');
-      return `<div class="challenge-row">
-        <div class="challenge-row-header" onclick="toggleChallenge(this)">
-          <span class="chevron">▶</span>
-          <span class="challenge-name">${esc(c.name)}</span>
-          ${c.period ? `<span class="challenge-period">${esc(c.period)}</span>` : ''}
-          ${c.points ? `<span class="challenge-points">${c.points}pts${c.bonus_points ? ' +'+c.bonus_points+' bonus' : ''}</span>` : ''}
-          ${c.deadline ? `<span class="challenge-deadline ${new Date(c.deadline) < new Date() ? 'overdue' : (new Date(c.deadline) - new Date() < 7*24*60*60*1000 ? 'urgent' : '')}">${new Date(c.deadline).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}</span>` : ''}
-          <span class="challenge-count">${cBooks.length} boek${cBooks.length !== 1 ? 'en' : ''}</span>
-          ${c.goodreads_url ? `<a href="${c.goodreads_url}" target="_blank" rel="noopener" class="btn btn-goodreads btn-sm" onclick="event.stopPropagation()">Goodreads ↗</a>` : ''}
+      const doneCount = cBooks.filter(b => b.status === 'done').length;
+      const readingCount = cBooks.filter(b => b.status === 'reading').length;
+      const total = cBooks.length;
+      const booksRequired = c.books_required || null;
+      const missing = booksRequired !== null ? Math.max(0, booksRequired - total) : null;
+      const denominator = booksRequired || total;
+      const pct = denominator === 0 ? 0 : Math.round((doneCount / denominator) * 100);
+      const isComplete = total > 0 && doneCount === total && (!booksRequired || total >= booksRequired);
+      const dotCls = isComplete ? 'dot-done' : readingCount > 0 ? 'dot-reading' : total === 0 ? 'dot-empty' : 'dot-to-read';
+
+      let deadlinePill = '';
+      if (c.deadline && !isComplete) {
+        const daysLeft = Math.ceil((new Date(c.deadline) - new Date()) / (1000 * 60 * 60 * 24));
+        const urgency = daysLeft < 0 ? 'overdue' : daysLeft <= 7 ? 'critical' : daysLeft <= 30 ? 'soon' : '';
+        const label = daysLeft < 0 ? `${Math.abs(daysLeft)}d te laat`
+          : daysLeft === 0 ? 'Vandaag'
+          : daysLeft <= 7 ? `nog ${daysLeft}d`
+          : new Date(c.deadline).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+        const dlCls = urgency === 'overdue' ? 'dl-overdue' : urgency === 'critical' ? 'dl-critical' : urgency === 'soon' ? 'dl-soon' : 'dl-normal';
+        deadlinePill = `<span class="chal-deadline-pill ${dlCls}">${label}</span>`;
+      } else if (isComplete) {
+        deadlinePill = `<span class="chal-deadline-pill dl-done">Klaar</span>`;
+      }
+
+      const fractionLabel = booksRequired ? `${doneCount}/${booksRequired}` : (total > 0 ? `${doneCount}/${total}` : '');
+      const metaParts = [];
+      if (c.period) metaParts.push(esc(c.period));
+      if (c.points) metaParts.push(`${c.points} pts`);
+      if (fractionLabel) metaParts.push(`${fractionLabel} boeken`);
+      const missingPill = missing > 0 ? `<span class="chal-missing-pill">${missing} te zoeken</span>` : '';
+
+      return `<div class="chal-row${isComplete ? ' is-done' : ''}">
+        <span class="chal-status-dot ${dotCls}"></span>
+        <div class="chal-row-info">
+          <div class="chal-row-name">${esc(c.name)}</div>
+          ${metaParts.length ? `<div class="chal-row-meta">${metaParts.join(' · ')}</div>` : ''}
         </div>
-        <div class="challenge-books">
-          ${c.description ? `<p style="font-size:.8rem;color:var(--ink-light);margin:.5rem 0 .25rem;font-style:italic">${esc(c.description)}</p>` : ''}
-          ${bookRows || '<p style="font-size:.8rem;color:var(--ink-faint);padding:.4rem 0">Nog geen boeken toegewezen</p>'}
+        ${denominator > 0 ? `<div class="chal-row-bar"><div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div></div>` : '<div class="chal-row-bar"></div>'}
+        ${missingPill}${deadlinePill}
+        <div class="chal-row-actions">
+          <button class="btn btn-ghost btn-sm" onclick="openChallengeDetailPopup('${c.id}')">Details</button>
+          <button class="btn btn-ghost btn-sm" onclick="editChallenge('${c.id}')">Bewerken</button>
         </div>
       </div>`;
     }).join('');
 
-    const grUrl = g.goodreads_url;
-    return `<div class="group-section">
-      <div class="group-header">
-        <h3>${esc(g.name)}</h3>
-        <span class="group-badge">${gChallenges.length} opdracht${gChallenges.length !== 1 ? 'en' : ''}</span>
-        <div class="group-header-actions">
-          ${grUrl ? `<a href="${esc(grUrl)}" target="_blank" rel="noopener" class="btn btn-goodreads btn-sm">Goodreads ↗</a>` : ''}
-          <button class="btn btn-ghost btn-sm" onclick="openChallengeModal('${g.id}')">+ Challenge</button>
+    return `<div class="grp-section">
+      <div class="grp-header">
+        <div class="grp-header-left">
+          <h2 class="grp-name">${esc(g.name)}</h2>
+          <span class="grp-meta">${gChallenges.length} opdracht${gChallenges.length !== 1 ? 'en' : ''}${totalBooks > 0 ? ` · ${totalBooks} boek${totalBooks !== 1 ? 'en' : ''}` : ''}</span>
+        </div>
+        <div class="grp-header-right">
+          ${g.goodreads_url ? `<a href="${esc(g.goodreads_url)}" target="_blank" rel="noopener" class="btn btn-goodreads btn-sm">Goodreads ↗</a>` : ''}
+          <button class="btn btn-ghost btn-sm" onclick="openChallengeModal('${g.id}')">+ Opdracht</button>
         </div>
       </div>
-      ${rows || '<p style="color:var(--ink-faint);font-size:.875rem">Nog geen opdrachten</p>'}
+      <div class="chal-table">
+        ${rows || '<p class="grp-empty">Nog geen opdrachten in deze groep</p>'}
+      </div>
     </div>`;
   }).join('');
-}
-
-function toggleChallenge(header) {
-  const b = header.nextElementSibling;
-  const ch = header.querySelector('.chevron');
-  b.classList.toggle('open');
-  ch.classList.toggle('open');
+  animateChallengeRows();
 }
 
 // ── Manage view ──
@@ -406,25 +552,26 @@ function renderManageView() {
   const gl = document.getElementById('groups-list');
   if (!gl) return;
   gl.innerHTML = groups.length === 0
-    ? '<p style="color:var(--ink-faint);font-size:.875rem;margin-bottom:.5rem">Nog geen groepen</p>'
+    ? '<p style="color:var(--text-3);font-size:.875rem;margin-bottom:.5rem">Nog geen groepen</p>'
     : groups.map(g => `
         <div class="manage-item">
-          <span>${esc(g.name)}<br><small>${challenges.filter(c => c.group_id === g.id).length} opdrachten</small></span>
-          <button class="btn btn-ghost btn-sm" onclick="editGroup('${g.id}')">Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteGroup('${g.id}')">Del</button>
+          <span>${esc(g.name)}<small>${challenges.filter(c => c.group_id === g.id).length} opdrachten</small></span>
+          <button class="btn btn-ghost btn-sm" onclick="editGroup('${g.id}')">Bewerken</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteGroup('${g.id}')">Verwijderen</button>
         </div>`).join('');
 
   const cl = document.getElementById('challenges-list');
   cl.innerHTML = challenges.length === 0
-    ? '<p style="color:var(--ink-faint);font-size:.875rem;margin-bottom:.5rem">Nog geen opdrachten</p>'
+    ? '<p style="color:var(--text-3);font-size:.875rem;margin-bottom:.5rem">Nog geen opdrachten</p>'
     : challenges.map(c => {
         const g = groups.find(gr => gr.id === c.group_id);
         return `<div class="manage-item">
-          <span>${esc(c.name)}<br><small>${g ? esc(g.name) : ''}${c.period ? ' · ' + c.period : ''}</small></span>
-          <button class="btn btn-ghost btn-sm" onclick="editChallenge('${c.id}')">Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteChallenge('${c.id}')">Del</button>
+          <span>${esc(c.name)}<small>${g ? esc(g.name) : ''}${c.period ? ' · ' + c.period : ''}</small></span>
+          <button class="btn btn-ghost btn-sm" onclick="editChallenge('${c.id}')">Bewerken</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteChallenge('${c.id}')">Verwijderen</button>
         </div>`;
       }).join('');
+  animateManageItems();
 }
 
 // ── Book modal ──
@@ -456,7 +603,7 @@ function openBookModal(bookId) {
 
   const cont = document.getElementById('challenge-assignments');
   if (challenges.length === 0) {
-    cont.innerHTML = '<p style="color:var(--ink-faint);font-size:.82rem">Nog geen opdrachten - voeg eerst enkele toe in het beheer</p>';
+    cont.innerHTML = '<p style="color:var(--text-3);font-size:.82rem">Nog geen opdrachten — voeg eerst enkele toe in het beheer</p>';
   } else {
     const bookAssignments = bookId ? assignments.filter(a => a.book_id === bookId) : [];
     cont.innerHTML = challenges.map(c => {
@@ -468,10 +615,10 @@ function openBookModal(bookId) {
         <label>
           <input type="checkbox" value="${c.id}" ${checked} onchange="toggleAssignmentNote(this)">
           <span style="font-weight:600">${esc(c.name)}</span>
-          ${g ? `<span style="font-size:.72rem;color:var(--ink-faint);margin-left:.2rem">${esc(g.name)}</span>` : ''}
+          ${g ? `<span style="font-size:.72rem;color:var(--text-3);margin-left:.2rem">${esc(g.name)}</span>` : ''}
         </label>
         <div class="assignment-note ${checked ? 'visible' : ''}">
-          <input type="text" placeholder="Why this book? (e.g. set in Japan, female author…)" value="${esc(noteVal)}" data-challenge="${c.id}">
+          <input type="text" placeholder="Waarom dit boek?" value="${esc(noteVal)}" data-challenge="${c.id}">
         </div>
       </div>`;
     }).join('');
@@ -573,7 +720,7 @@ async function searchOpenLibrary() {
     const data = await res.json();
     const results = data.docs || [];
     document.getElementById('ol-results').innerHTML = results.length === 0
-      ? '<p style="padding:.75rem;color:var(--ink-faint);font-size:.82rem">No results found</p>'
+      ? '<p style="padding:.75rem;color:var(--text-3);font-size:.82rem">Geen resultaten gevonden</p>'
       : `<div class="search-results">${results.map(r => {
           const cover = r.cover_i ? `https://covers.openlibrary.org/b/id/${r.cover_i}-S.jpg` : '';
           const author = (r.author_name || []).join(', ');
@@ -582,12 +729,12 @@ async function searchOpenLibrary() {
             year: r.first_publish_year,
             cover: r.cover_i ? `https://covers.openlibrary.org/b/id/${r.cover_i}-M.jpg` : ''
           }).replace(/"/g,'&quot;')})">
-            ${cover ? `<img src="${cover}" alt="">` : '<div style="width:30px;height:42px;background:var(--apricot);border-radius:3px;flex-shrink:0"></div>'}
+            ${cover ? `<img src="${cover}" alt="">` : '<div style="width:30px;height:42px;background:var(--accent-light);border-radius:3px;flex-shrink:0"></div>'}
             <div class="info"><strong>${esc(r.title)}</strong><small>${author}${r.first_publish_year ? ' · ' + r.first_publish_year : ''}</small></div>
           </div>`;
         }).join('')}</div>`;
   } catch(e) {
-    document.getElementById('ol-results').innerHTML = '<p style="padding:.75rem;color:#9b2c2c;font-size:.82rem">Search failed — check your connection</p>';
+    document.getElementById('ol-results').innerHTML = '<p style="padding:.75rem;color:var(--danger);font-size:.82rem">Zoeken mislukt — controleer uw verbinding</p>';
   }
   btn.innerHTML = 'Zoeken';
   btn.disabled = false;
@@ -598,7 +745,7 @@ function selectBook(data) {
   document.getElementById('book-author').value = data.author;
   document.getElementById('book-year').value = data.year || '';
   document.getElementById('book-cover-url').value = data.cover || '';
-  document.getElementById('ol-results').innerHTML = `<p style="font-size:.8rem;color:var(--berrry);padding:.4rem 0">✓ Book selected — you can still edit the fields below</p>`;
+  document.getElementById('ol-results').innerHTML = `<p style="font-size:.8rem;color:var(--success);padding:.4rem 0">✓ Boek geselecteerd — je kunt de velden hieronder nog aanpassen</p>`;
 }
 
 // ── Group modal ──
@@ -702,6 +849,7 @@ function openChallengeModal(preGroupId) {
   document.getElementById('challenge-name').value = '';
   document.getElementById('challenge-period').value = '';
   document.getElementById('challenge-deadline').value = '';
+  document.getElementById('challenge-books-required').value = '';
   document.getElementById('challenge-points').value = '';
   document.getElementById('challenge-bonus').value = '';
   document.getElementById('challenge-desc').value = '';
@@ -720,6 +868,7 @@ function editChallenge(id) {
   document.getElementById('challenge-name').value = c.name;
   document.getElementById('challenge-period').value = c.period || '';
   document.getElementById('challenge-deadline').value = c.deadline || '';
+  document.getElementById('challenge-books-required').value = c.books_required || '';
   document.getElementById('challenge-points').value = c.points || '';
   document.getElementById('challenge-bonus').value = c.bonus_points || '';
   document.getElementById('challenge-desc').value = c.description || '';
@@ -738,6 +887,7 @@ async function saveChallenge() {
     name, group_id,
     period: document.getElementById('challenge-period').value.trim() || null,
     deadline: document.getElementById('challenge-deadline').value || null,
+    books_required: parseInt(document.getElementById('challenge-books-required').value) || null,
     points: parseInt(document.getElementById('challenge-points').value) || null,
     bonus_points: parseInt(document.getElementById('challenge-bonus').value) || null,
     description: document.getElementById('challenge-desc').value.trim() || null,
@@ -805,7 +955,7 @@ function openGroupPopup(groupId) {
   if (!g) return;
   const gChallenges = challenges.filter(c => c.group_id === groupId);
   const challengeRows = gChallenges.length === 0
-    ? '<p style="color:var(--ink-faint);font-size:.875rem;text-align:center;padding:1rem">Geen lopende opdrachten</p>'
+    ? '<p style="color:var(--text-3);font-size:.875rem;text-align:center;padding:1rem">Geen lopende opdrachten</p>'
     : gChallenges.map(c => {
         const cBooks = assignments.filter(a => a.challenge_id === c.id).map(a => books.find(b => b.id === a.book_id)).filter(Boolean);
         const done = cBooks.filter(b => b.status === 'done').length;
@@ -817,17 +967,17 @@ function openGroupPopup(groupId) {
             <span class="group-popup-challenge-name">${esc(c.name)}</span>
             ${c.points ? `<span class="challenge-points">${c.points}pts</span>` : ''}
           </div>
-          ${c.period || deadlineStr ? `<div style="font-size:.72rem;color:var(--ink-faint);margin:.15rem 0 .4rem">${c.period ? esc(c.period) : ''}${c.period && deadlineStr ? ' · ' : ''}${deadlineStr ? 'deadline ' + deadlineStr : ''}</div>` : ''}
-          <div class="progress-bar-bg" style="margin:.3rem 0 .2rem">
-            <div class="progress-bar-fill" style="width:${pct}%"></div>
+          ${c.period || deadlineStr ? `<div style="font-size:.72rem;color:var(--text-3);margin:.15rem 0 .4rem">${c.period ? esc(c.period) : ''}${c.period && deadlineStr ? ' · ' : ''}${deadlineStr ? 'deadline ' + deadlineStr : ''}</div>` : ''}
+          <div class="bar-bg" style="margin:.3rem 0 .2rem">
+            <div class="bar-fill" style="width:${pct}%"></div>
           </div>
-          <div style="font-size:.72rem;color:var(--ink-light)">${done}/${total} boeken gelezen</div>
+          <div style="font-size:.72rem;color:var(--text-2)">${done}/${total} boeken gelezen</div>
         </div>`;
       }).join('');
 
   const iconHtml = g.icon_url
     ? `<img src="${esc(g.icon_url)}" alt="${esc(g.name)}" style="width:48px;height:48px;border-radius:50%;object-fit:cover">`
-    : `<div style="width:48px;height:48px;border-radius:50%;background:var(--berry);display:flex;align-items:center;justify-content:center;font-size:1.4rem">📚</div>`;
+    : `<div style="width:48px;height:48px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:white">📚</div>`;
 
   const el = document.getElementById('group-popup');
   el.innerHTML = `
@@ -835,13 +985,15 @@ function openGroupPopup(groupId) {
       <div class="group-popup-header">
         ${iconHtml}
         <div style="flex:1;min-width:0">
-          <h3 style="font-family:'Playwrite GB J',cursive;font-size:1.1rem;color:var(--bordeaux)">${esc(g.name)}</h3>
-          ${g.description ? `<p style="font-size:.8rem;color:var(--ink-light);margin-top:.1rem">${esc(g.description)}</p>` : ''}
+          <h3 style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:600;color:var(--text)">${esc(g.name)}</h3>
+          ${g.description ? `<p style="font-size:.8rem;color:var(--text-2);margin-top:.1rem">${esc(g.description)}</p>` : ''}
         </div>
-        <button class="modal-close" onclick="closeGroupPopup()">×</button>
+        <button class="modal-close" onclick="closeGroupPopup()">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
       <div class="group-popup-body">
-        <h4 style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-light);margin-bottom:.75rem">Opdrachten (${gChallenges.length})</h4>
+        <p style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:.75rem">Opdrachten (${gChallenges.length})</p>
         ${challengeRows}
       </div>
       ${g.goodreads_url ? `
@@ -850,6 +1002,7 @@ function openGroupPopup(groupId) {
         </div>` : ''}
     </div>`;
   el.style.display = 'flex';
+  animateProgressBars(el);
 }
 
 function closeGroupPopup() {
@@ -871,12 +1024,12 @@ function openChallengeDetailPopup(challengeId, fromGroupId) {
   const deadlineStr = c.deadline ? new Date(c.deadline).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'}) : null;
 
   const bookRows = cBooks.length === 0
-    ? '<p style="color:var(--ink-faint);font-size:.875rem;padding:.5rem 0">Nog geen boeken gekoppeld aan deze opdracht</p>'
+    ? '<p style="color:var(--text-3);font-size:.875rem;padding:.5rem 0">Nog geen boeken gekoppeld aan deze opdracht</p>'
     : cBooks.map(({ book: b, note }) => {
         const statusLabel = b.status === 'to-read' ? 'Te lezen' : b.status === 'reading' ? 'Aan het lezen' : '✓ Gelezen';
         const cover = b.cover_url
           ? `<img src="${b.cover_url}" alt="Cover" style="width:38px;height:52px;object-fit:cover;border-radius:4px">`
-          : `<div style="width:38px;height:52px;background:var(--apricot);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:1.1rem">📖</div>`;
+          : `<div style="width:38px;height:52px;background:var(--accent-light);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:1.1rem">📖</div>`;
         return `<div class="cdp-book-row">
           ${cover}
           <div class="cdp-book-info">
@@ -884,21 +1037,19 @@ function openChallengeDetailPopup(challengeId, fromGroupId) {
             <small>${esc(b.author)}${b.year ? ' · ' + b.year : ''}</small>
             ${note ? `<span class="challenge-book-note">${esc(note)}</span>` : ''}
           </div>
-          <span class="status-badge ${b.status}" style="font-size:.68rem;flex-shrink:0">${statusLabel}</span>
+          <span class="badge badge-${b.status}" style="font-size:.68rem;flex-shrink:0">${statusLabel}</span>
         </div>`;
       }).join('');
 
-  // Deadline urgency for popup
-  let popupDaysLeft = null;
   let popupUrgencyPill = '';
-  if (c.deadline && !(cBooks.length > 0 && cBooks.filter(x => x.book.status === 'done').length === cBooks.length)) {
-    popupDaysLeft = Math.ceil((new Date(c.deadline) - new Date()) / (1000 * 60 * 60 * 24));
-    if (popupDaysLeft < 0) {
+  if (c.deadline && !(total > 0 && done === total)) {
+    const daysLeft = Math.ceil((new Date(c.deadline) - new Date()) / (1000 * 60 * 60 * 24));
+    if (daysLeft < 0) {
       popupUrgencyPill = `<span class="cdp-urgency-pill overdue">⚠️ Deadline verstreken</span>`;
-    } else if (popupDaysLeft <= 7) {
-      popupUrgencyPill = `<span class="cdp-urgency-pill critical">🔥 Nog ${popupDaysLeft} dag${popupDaysLeft !== 1 ? 'en' : ''}!</span>`;
-    } else if (popupDaysLeft <= 30) {
-      popupUrgencyPill = `<span class="cdp-urgency-pill soon">⏰ Nog ${popupDaysLeft} dagen</span>`;
+    } else if (daysLeft <= 7) {
+      popupUrgencyPill = `<span class="cdp-urgency-pill critical">🔥 Nog ${daysLeft} dag${daysLeft !== 1 ? 'en' : ''}!</span>`;
+    } else if (daysLeft <= 30) {
+      popupUrgencyPill = `<span class="cdp-urgency-pill soon">⏰ Nog ${daysLeft} dagen</span>`;
     }
   }
 
@@ -906,9 +1057,11 @@ function openChallengeDetailPopup(challengeId, fromGroupId) {
   el.innerHTML = `
     <div class="modal" style="max-width:500px">
       <div class="modal-header">
-        <h2>${esc(c.name)}</h2>
-        <button class="btn btn-ghost btn-sm" onclick="closeChallengeDetailPopup();editChallenge('${c.id}')" title="Opdracht bewerken" style="padding:.35rem .7rem;font-size:.8rem">✏️ Bewerken</button>
-        <button class="modal-close" onclick="closeChallengeDetailPopup()">×</button>
+        <h2 class="modal-title">${esc(c.name)}</h2>
+        <button class="btn btn-ghost btn-sm" onclick="closeChallengeDetailPopup();editChallenge('${c.id}')">✏️ Bewerken</button>
+        <button class="modal-close" onclick="closeChallengeDetailPopup()">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
       <div class="modal-body">
         ${fromGroupId ? `<button class="cdp-back-btn" onclick="closeChallengeDetailPopup();openGroupPopup('${fromGroupId}')">← Terug naar groep</button>` : ''}
@@ -922,17 +1075,18 @@ function openChallengeDetailPopup(challengeId, fromGroupId) {
         ${c.description ? `<div class="cdp-description">${esc(c.description)}</div>` : ''}
         <div class="cdp-progress-section">
           <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.4rem">
-            <span style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-light)">Voortgang</span>
-            <span style="font-size:.8rem;color:var(--ink-light)">${done}/${total} gelezen (${pct}%)</span>
+            <span style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3)">Voortgang</span>
+            <span style="font-size:.8rem;color:var(--text-2)">${done}/${total} gelezen (${pct}%)</span>
           </div>
-          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+          <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
         </div>
-        <h4 style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-light);margin:1.25rem 0 .6rem">Boeken</h4>
+        <p style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin:1.25rem 0 .6rem">Boeken</p>
         ${bookRows}
         ${c.goodreads_url ? `<div style="margin-top:1.25rem"><a href="${esc(c.goodreads_url)}" target="_blank" rel="noopener" class="btn btn-goodreads" style="width:100%;justify-content:center">Open opdracht op Goodreads ↗</a></div>` : ''}
       </div>
     </div>`;
   el.style.display = 'flex';
+  animateProgressBars(el);
 }
 
 function closeChallengeDetailPopup() {
@@ -948,8 +1102,13 @@ window.addEventListener('load', () => {
     document.getElementById('sb-key').value = key;
     try {
       db = supabase.createClient(url, key);
-      document.getElementById('setup-banner').style.display = 'none';
-    } catch(e) {}
+      updateConnectionStatus(true);
+    } catch(e) {
+      updateConnectionStatus(false);
+    }
+  } else {
+    document.getElementById('connection-panel').classList.remove('hidden');
+    updateConnectionStatus(false);
   }
   loadAll();
 });
