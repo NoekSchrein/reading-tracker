@@ -1139,7 +1139,7 @@ body {
   cursor: pointer;
   font-size: .875rem;
 }
-.challenge-assignment input[type=checkbox] { cursor: pointer; accent-color: var(--accent); }
+.challenge-assignment input[type=checkbox] { cursor: pointer; accent-color: var(--accent); width: 35px; }
 .assignment-note { margin-top: .5rem; padding-left: 1.5rem; display: none; }
 .assignment-note.visible { display: block; }
 .assignment-note input {
